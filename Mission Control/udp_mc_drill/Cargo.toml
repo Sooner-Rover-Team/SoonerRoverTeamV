@@ -1,0 +1,10 @@
+[package]
+name = "drill_controller"
+version = "0.1.0"
+authors = ["Aaron <aaronmp01@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gilrs = "0.8.0"

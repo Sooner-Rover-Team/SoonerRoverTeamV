@@ -1,0 +1,10 @@
+[package]
+name = "rover_controller"
+version = "0.9.0"
+authors = ["Aaron <aaronp@ou.edu>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gilrs = "0.8.0"

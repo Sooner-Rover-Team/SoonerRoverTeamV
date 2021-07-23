@@ -1,0 +1,114 @@
+<!doctype html>
+
+<style>
+  body {
+    background-color: white;
+  }
+  
+  h1 {
+    color: white;
+    text-align: center;
+  }
+  
+  p {
+    font-family: verdana;
+    color:black;
+    font-size: 20px;
+  }
+  div {
+    color:black;
+    font-size: large;
+    font-family: comic sans;
+  }
+  </style>
+
+
+<head>
+  <title>Webcam Streamer</title>
+</head>
+
+<body>
+  <form method="post" action='/'>
+    <img src={{url_for('static',filename="logo.png" )}} style="width: 200px;">
+    <div>
+      <img id="videoframe" src="{{ url_for('video_feed') }}" style="width: {{videowidth*activestreams}}px;">
+    </div>
+    <div>
+      Cameras Connected: {{ camerasconnected }}
+      Active Streams: {{ activestreams }}
+    </div>
+    <div>
+      Zoom: <input type="range" id="zoomslider" name="zoomslider" min="100" value="{{videowidth}}" max="{{maxframesize}}" >
+      <span id="zoomvalue">{{ videowidth }}</span>px
+      <button id='zoomtoframesize'>Same as Frame Size</button>
+      <script>
+        const zoomslider = document.getElementById('zoomslider');
+        const zoomvalue = document.getElementById('zoomvalue');
+        const videoframe = document.getElementById('videoframe')
+        const zoomtoframesize = document.getElementById('zoomtoframesize')
+        zoomtoframesize.addEventListener('click', () => {
+          console.log('click')
+          zoomslider.value = frameslider.value
+          zoomvalue.textContent = frameslider.value
+          videoframe.style.width = frameslider.value * {{activestreams}} + 'px'
+        })
+        zoomslider.addEventListener('change', () => {
+          zoomvalue.textContent = zoomslider.value
+          videoframe.style.width = zoomslider.value * {{activestreams}} + 'px'
+        })
+      </script>
+    </div>
+    <div>
+      Quality of Encoded Image:
+      <input type="range" min="1" max="100" value="{{ encodingquality }}" id="qualityslider" name="qualityslider">
+      <span id="qualityvalue">{{ encodingquality }}</span>%
+      <input type="submit" name="qualitysubmit" value="Send Quality">
+      <script>
+        const qualityslider = document.getElementById('qualityslider');
+        const qualityvalue = document.getElementById('qualityvalue');
+        qualityslider.addEventListener('change', () => {
+          qualityvalue.textContent = qualityslider.value;
+        })
+      </script>
+    </div>
+    <div>
+      Frame Size:
+      <input type="range" id="sizeslider" min="60" max="{{ maxframesize }}" value="{{ framesize }}" name="sizeslider">
+      <span id='framesizevalue'> {{framesize}}</span>px
+      <script>
+        const frameslider = document.getElementById('sizeslider');
+        const framevalue = document.getElementById('framesizevalue');
+        frameslider.addEventListener('change', () => {
+          framevalue.textContent = frameslider.value;
+        })
+      </script>
+      <input type="submit" name="sizesubmit" value="Send Frame Size">
+    </div>
+    <div>
+      Wait Between Sending Frames: {{ responsewait }}ms
+    </div>
+    <div>
+      FPS:
+      {%for i in [30,20,15,12,10,8,5,4,3,2,1]%}
+      <input type="submit" name="fps_{{i}}" value="{{i}} FPS" {%if fps==i%} style="background-color: lightblue;"
+        {%endif%}>
+      {%endfor%}
+    </div>
+    {%for i in range(0, camerasconnected)%}
+    <div>
+      <input type="submit" name="startvs{{i+1}}" value="Start VS {{i+1}}">
+      <input type="submit" name="stopvs{{i+1}}" value="Stop VS {{i+1}}">
+      <input type="submit" name="relaunchvs{{i+1}}" value="Relaunch VS {{i+1}}">
+      <!-- <input type="submit" name="startrecordvs{{i+1}}" value="Start Recording VS {{i+1}}" {%if recordingstreams[i]%}
+        style="background-color: red;" {%endif%}>
+      <input type="submit" name="stoprecordvs{{i+1}}" value="Stop Recording VS {{i+1}}"> -->
+      <input type="submit" name="recordvs{{i+1}}" value="Record" {%if recordingstreams[i]%}
+        style="background-color: red;" {%endif%}>
+      <input type="submit" name="movetoleft{{i+1}}" value="Move to Left">
+      <!-- <input type="submit" name="stoprecordvs{{i+1}}" value="Stop Recording VS {{i+1}}"> -->
+
+    </div>
+    {%endfor%}
+  </form>
+</body>
+</html>
