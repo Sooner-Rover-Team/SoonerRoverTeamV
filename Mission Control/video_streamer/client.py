@@ -14,6 +14,7 @@ targetwait = 1000/targetfps  # in milliseconds
 maxframesize = None  # the max width of the camera frame
 framesize = 640  # 600px width default
 videowidth = 600  # width of html video element
+MAX_CAMERAS = 10 # number of cameras to try opening if none are defined
 
 # initialize a flask object
 app: Flask = Flask(__name__)
@@ -157,10 +158,10 @@ if __name__ == '__main__':
     # create a list of video streams to reference in generate()
     vslist: list[VideoStream] = []
 
-    # find up to 10 attached cameras and try and start streams on them
+    # find up to MAX_CAMERAS attached cameras and try and start streams on them
     if args['source'] == '-1':
         log('shotgun approach')
-        for i in range(0, 9):
+        for i in range(0, MAX_CAMERAS-1):
             vs = VideoStream(i, 'vs{}'.format(i+1), args['resolution'])
             if vs.stream.isOpened() is False:
                 vs.release()
