@@ -1,8 +1,9 @@
 from flask import Response, Flask, render_template, request
 import argparse
 from videostream import VideoStream
-from utils import findactivestreams, findrecording, parseindicies, handlecamops, calcwait, timestampframe
+from utils import findactivestreams, findrecording, parseindicies, handlecamops, calcwait, timestampframe, log
 import imutils
+from numpy import ndarray as Frame
 import cv2
 import time
 
@@ -13,16 +14,17 @@ targetwait = 1000/targetfps  # in milliseconds
 maxframesize = None  # the max width of the camera frame
 framesize = 640  # 600px width default
 videowidth = 600  # width of html video element
+MAX_CAMERAS = 10 # number of cameras to try opening if none are defined
 
 # initialize a flask object
-app = Flask(__name__)
+app: Flask = Flask(__name__)
 
 
-# define the root url to be index.html
-# in other words, when the user accesses http://[ip]:[port]/
-# they will see index.html
 @app.route("/", methods=['GET', 'POST'])
 def index():
+    # define the root url to be index.html
+    # in other words, when the user accesses http://[ip]:[port]/
+    # they will see index.html
     global encodingquality, targetwait, targetfps, framesize, videowidth, maxframesize
     if 'zoomslider' in request.form:
         videowidth = int(request.form['zoomslider'])
@@ -40,14 +42,10 @@ def index():
     if 'sizesubmit' in request.form:
         framesize = int(request.form['sizeslider'])
 
-    if 'zoomsubmit' in request.form:
-        # do some shit wiht the value here
-        pass
-
     # find active streams for limiting new streams
-    activestreams = findactivestreams(vslist)
-    recordingstreams = findrecording(vslist)
-    camerasconnected = len(vslist)
+    activestreams: int = findactivestreams(vslist)
+    recordingstreams: int = findrecording(vslist)
+    camerasconnected: int = len(vslist)
     handlecamops(vslist, request, activestreams,
                  recordingstreams, camerasconnected)
 
@@ -72,7 +70,7 @@ def generate():
     # grab global references to the list of video streams
     # and create list for frames to be stored in
     global vslist
-    framelist = []
+    framelist: list[Frame] = []
 
     # declare variables for calculating time differences
     lastwait = 0
@@ -91,7 +89,7 @@ def generate():
         lastwait = calculatedwait
 
         # debugging stuff, dont delete yet lol
-        # print('difference is ' + str(difference) + 'ms, trying to wait ' + str(targetwait) + 'ms, waiting ' + str(calculatedwait) + 'ms')
+        # log('difference is ' + str(difference) + 'ms, trying to wait ' + str(targetwait) + 'ms, waiting ' + str(calculatedwait) + 'ms')
 
         time.sleep(calculatedwait/1000)  # sleep takes an argument in seconds
 
@@ -106,12 +104,12 @@ def generate():
             continue
 
         # resize each frame to 600
-        resizedlist = []
+        resizedlist: list = []
         for frame in framelist:
             resizedlist.append(imutils.resize(frame, width=framesize))
 
         # merge each of the three frames into one image
-        mergedim = cv2.hconcat(resizedlist)
+        mergedim: Frame = cv2.hconcat(resizedlist)
 
         # add the timestamp to the merged image
         mergedim = timestampframe(mergedim)
@@ -120,7 +118,8 @@ def generate():
         framelist.clear()
 
         # encode the frame in JPEG format
-        encoding_parameters = [int(cv2.IMWRITE_JPEG_QUALITY), encodingquality]
+        encoding_parameters: list[int] = [
+            int(cv2.IMWRITE_JPEG_QUALITY), encodingquality]
         (flag, encodedimage) = cv2.imencode(
             ".jpg", mergedim, encoding_parameters)
 
@@ -132,13 +131,10 @@ def generate():
         yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
               bytearray(encodedimage) + b'\r\n')
 
-# return the generated image to the 'video_feed' element of index.html
-
 
 @app.route("/video_feed")
-def video_feed():
-    # return the response generated along with the specific media
-    # type (mime type)
+def video_feed() -> Response:
+    # return the generated image to the 'video_feed' element of index.html
     return Response(generate(),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
 
@@ -157,15 +153,15 @@ if __name__ == '__main__':
                     help='indicies of cameras to use')
 
     # parse arguments
-    args = vars(ap.parse_args())
+    args: dict[str] = vars(ap.parse_args())
 
     # create a list of video streams to reference in generate()
-    vslist = []
+    vslist: list[VideoStream] = []
 
-    # find up to 10 attached cameras and try and start streams on them
+    # find up to MAX_CAMERAS attached cameras and try and start streams on them
     if args['source'] == '-1':
-        print('shotgun approach')
-        for i in range(0, 9):
+        log('shotgun approach')
+        for i in range(0, MAX_CAMERAS-1):
             vs = VideoStream(i, 'vs{}'.format(i+1), args['resolution'])
             if vs.stream.isOpened() is False:
                 vs.release()
@@ -176,7 +172,7 @@ if __name__ == '__main__':
     # open cameras based on arguments passed
     else:
         sources = parseindicies(args['source'])
-        print('opening ' + args['source'])
+        log('opening ' + args['source'])
         for i in sources:
             vs = VideoStream(i, 'vs{}'.format(i+1), args['resolution'])
             if vs.stream.isOpened() is False:
