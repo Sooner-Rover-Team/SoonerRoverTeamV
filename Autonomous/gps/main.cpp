@@ -9,10 +9,10 @@ int main() {
     char* ip = &swift_ip[0];
     char* port = &swift_port[0];
     gps_init(ip, port);
-    while (1)
-    {
-        longitude = pos_llh.lat;
-        printf("longitude: %f",longitude);
-    }
+    // while (1)
+    // {
+    //     longitude = pos_llh.lat;
+    //     printf("longitude: %f",longitude);
+    // }
     
 }
