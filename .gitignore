@@ -1,2 +1,9 @@
 target
 .venv
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles
+Makefile
+libgps.a
+build/
+pyvenv.cfg
