@@ -7,3 +7,4 @@ Makefile
 libgps.a
 build/
 pyvenv.cfg
+*.pyc
