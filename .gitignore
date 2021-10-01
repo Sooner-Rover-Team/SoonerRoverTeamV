@@ -8,3 +8,6 @@ libgps.a
 build/
 pyvenv.cfg
 *.pyc
+.vscode
+__pycache__
+*.avi
