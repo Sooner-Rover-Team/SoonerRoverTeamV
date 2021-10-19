@@ -1,3 +1,9 @@
+#10/19/21
+# Update 10/19/21
+Added four SWIG interface files for edc, gps, sbp, and main.
+Added four python modules for edc, gps, sbp, and main.
+Added SWIG instructions.txt. Which has instructions on how to use SWIG to wrap the libraries
+
 # Update 10/29/19
 
 Added a cmake to this directory that creates the library "gps" which can be linked in another directory's cmake. However, the variables in gps.h had to be externed for this to work.
