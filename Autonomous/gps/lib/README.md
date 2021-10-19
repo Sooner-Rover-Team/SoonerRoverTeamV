@@ -1,4 +1,4 @@
-#10/19/21
+
 # Update 10/19/21
 Added four SWIG interface files for edc, gps, sbp, and main.
 Added four python modules for edc, gps, sbp, and main.
