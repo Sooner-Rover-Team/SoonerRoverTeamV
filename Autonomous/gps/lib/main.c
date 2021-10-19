@@ -1,7 +1,7 @@
 #include "gps.h"
 #include <stdio.h>
 
-int main()
+int gpsmain()
 {
     char *ip = "192.168.1.123";
     char *host = "55555";
