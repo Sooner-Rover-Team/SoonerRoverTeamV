@@ -2,7 +2,7 @@
 # Update 10/19/21
 Added four SWIG interface files for edc, gps, sbp, and main.
 Added four python modules for edc, gps, sbp, and main.
-Added SWIG instructions.txt. Which has instructions on how to use SWIG to wrap the libraries
+Added SWIG instructions.txt which has instructions on how to use SWIG to wrap the libraries
 
 # Update 10/29/19
 
