@@ -1,14 +1,42 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(gps_read)
+project(libtest_project)
 
-include_directories("${PROJECT_SOURCE_DIR}")
-add_subdirectory("${PROJECT_SOURCE_DIR}/lib")
+file(GLOB source_files 
+    gps.c
+    edc.c  
+    sbp.c 
+    acquisition.h 
+    bootload.h 
+    common.h 
+    edc.h 
+    ext_events.h 
+    file_io.h 
+    flash.h 
+    gnss.h 
+    gps.h 
+    imu.h 
+    logging.h 
+    mag.h 
+    navigation.h 
+    ndb.h 
+    observation.h 
+    orientation.h 
+    piksi.h 
+    sbas.h 
+    sbp.h 
+    settings.h 
+    ssr.h 
+    system.h 
+    tracking.h 
+    user.h 
+    vehicle.h 
+    version.h 
+)
 
-# set(HEADER_FILES )
+add_library(gps STATIC ${source_files})
 
-add_executable(gps_read main.cpp ${HEADER_FILES})
+set_target_properties(gps PROPERTIES LINKER_LANGUAGE C)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
-
-target_link_libraries( gps_read gps )
+install(TARGETS gps DESTINATION lib)
+install(FILES gps.h DESTINATION include)
