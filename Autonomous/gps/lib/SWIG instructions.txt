@@ -43,7 +43,7 @@ import gps
 ==================================================================================
 To wrap main.c:
 
-swig -python gpsmain.i
+swig -python main.i
 gcc -fpic -c -I/usr/include/python2.7 main.c main_wrap.c
 gcc -shared main.o main_wrap.o -o _gpsmain.so gps.o sbp.o edc.o
 python
