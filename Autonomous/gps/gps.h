@@ -78,6 +78,9 @@ void close_socket();
 // socket read function: Reference to this is also passed to sbp_process()
 u32 socket_read(u8 *buff, u32 n, void *context);
 
+double get_latitude();
+double get_longitude();
+
 /* Callback functions. References to these functions are passed
  * as one of the arguments in the sbp_register_callback() function.
  * As far as I know, that is what sets up the structs which continue

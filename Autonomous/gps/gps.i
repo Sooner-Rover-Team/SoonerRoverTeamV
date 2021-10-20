@@ -1,5 +1,6 @@
 %module gps
 %{
+
     #include <stdio.h>
     #include <stdlib.h>
     #include <string.h>
@@ -22,6 +23,8 @@
     extern void gps_finish();
     extern void setup_socket(); 
     extern void close_socket();
+    extern double get_longitude();
+    extern double get_latitude();
     extern u32 socket_read(u8 *buff, u32 n, void *context);
     extern void *gps_thread();
     extern void sbp_pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context);
@@ -38,6 +41,8 @@ extern void gps_init(char *ip, char *port);
 extern void gps_finish();
 extern void setup_socket(); 
 extern void close_socket();
+extern double get_longitude();
+extern double get_latitude();
 extern u32 socket_read(u8 *buff, u32 n, void *context);
 extern void *gps_thread();
 extern void sbp_pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context);

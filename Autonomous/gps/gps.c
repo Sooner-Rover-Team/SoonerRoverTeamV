@@ -102,6 +102,13 @@ u32 socket_read(u8 *buff, u32 n, void *context)
   return result;
 }
 
+double get_latitude() {
+  return pos_llh.lat;
+}
+double get_longitude() {
+  return pos_llh.lon;
+}
+
 // see header file for description
 void *gps_thread()
 {

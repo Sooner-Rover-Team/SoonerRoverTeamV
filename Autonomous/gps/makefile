@@ -13,7 +13,7 @@ sbp:
 gps:
 	swig -python gps.i
 	gcc -fpic -c -I/usr/include/python3.8 gps.c gps_wrap.c
-	gcc -shared gps.o gps_wrap.o -o _gps.so sbp.o edc.o
+	gcc -shared gps.o gps_wrap.o -o _gps.so edc.o sbp.o
 
 gpsmain:
 	swig -python main.i
@@ -23,3 +23,8 @@ gpsmain:
 clean:
 	rm *.o
 	rm *.so
+	rm *_wrap.c
+	rm sbp.py
+	rm gps.py
+	rm gpsmain.py
+	rm edc.py
