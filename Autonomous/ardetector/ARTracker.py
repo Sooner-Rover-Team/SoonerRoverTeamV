@@ -40,76 +40,52 @@ class ARTracker:
 
     def arFound(self, id, image, writeToFile):
         # converts to grayscale
-        cv.cvtColor(src=image, code=cv.COLOR_RGB2GRAY, dest=image) 
-        # tries converting to b&w using different different cutoffs to find the perfect one for the ar tag
+        cv.cvtColor(image, image, cv.COLOR_RGB2GRAY)  
+        
+        index = -1  
+        # tries converting to b&w using different different cutoffs to find the perfect one for the current lighting
         for i in range(40, 221, 60):
-            aruco.detectMarkers((image > i), self.tagDict, corners, MarkerIDs, parameters, rejects) 
-            if(MarkerIDs.size() > 0)
+            # FIXME corners = [], MarkerIDs = [], rejects = []
+            # detects all of the tags in the current b&w cutoff
+            aruco.detectMarkers((image > i), self.tagDict, corners, MarkerIDs, rejects)   
+        
+            if MarkerIDs.length > 0:
              
-                if(MarkerIDs.size() == 1)
-                 
-                    std::cout << "Just found one post" << std::endl 
-                 
-                else
-                 
-                    if(writeToFile)
-                     
-                        mFrame = image > i  # purely for debug
-                        videoWriter.write(mFrame)  # purely for debug
-                     
-                    break 
-                 
+                index = -1 
+                # this just checks to make sure that it found the right tag. Probably should move this into the b&w block
+                for i in range(MarkerIDs.length):  
+                    if MarkerIDs[i] == id:
+                        index = i 
+                        break  
+            
+                if index != -1:
+                    print("Found the correct tag!")
+                    if writeToFile:
+                        mFrame = image > i   #purely for debug
+                        self.videoWriter.write(mFrame)   #purely for debug   
+                    break                    
+	            
+                else:
+                    print("Found a tag but was not the correct one") 
              
-            if(i == 220) # did not ever find two ars. TODO add something for if it finds one tag
+
+            if i == 220:  #did not find any AR tags with any b&w cutoff
              
-                if(writeToFile)
-                    videoWriter.write(image) 
+                if writeToFile:
+                    self.videoWriter.write(image) 
                 distanceToAR = -1 
                 angleToAR = 0 
-                return 0 
+                return False 
              
          
-        int index1 = -1, index2 = -1 
-        for(int i = 0  i < MarkerIDs.size()  i++) # this just checks to make sure that it found the right tags
-         
-            if(MarkerIDs[i] == id1 || MarkerIDs[i] == id2)
-             
-                if(MarkerIDs[i] == id1)
-                    index1 = i 
-                else
-                    index2=i  
-                if(index1 != -1 && index2 != -1)
-                    break 
-                
-         
-        if(index1 == -1 || index2 == -1) 
-         
-            distanceToAR=-1 
-            angleToAR=0 
-            std::cout << "index1: " << index1 << "\nindex2: " << index2 << std::endl 
-            if(index1 != -1 || index2 != -1)
-             
-                return 1 
-             
-            return 0  # no correct ar tags found
-         
-        else
-         
-            widthOfTag1 = corners[index1][1].x - corners[index1][0].x 
-            widthOfTag2 = corners[index2][1].x - corners[index2][0].x 
-
-            # distanceToAR = (knownWidthOfTag(20cm) * focalLengthOfCamera) / pixelWidthOfTag
-            distanceToAR1 = (knownTagWidth * focalLength) / widthOfTag1 
-            distanceToAR2 = (knownTagWidth * focalLength) / widthOfTag2 
-            std::cout << "1: " << distanceToAR1 << "\n2: " << distanceToAR2 << std::endl 
-            std::cout << "focal: " << focalLength << "\nwidth: " << widthOfTag << std::endl 
-            distanceToAR = (distanceToAR1 + distanceToAR2) / 2 
-            std::cout << distanceToAR << std::endl 
-        
-            centerXTag = (corners[index1][1].x + corners[index2][0].x) / 2 
-            angleToAR = degreesPerPixel * (centerXTag - 960)  # takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
-        
-            return 2 
+        widthOfTag = corners[index][1].x - corners[index][0].x 
+        distanceToAR = (self.knownTagWidth * self.focalLength) / widthOfTag 
+    
+        centerXTag = (corners[index][1].x + corners[index][0].x) / 2 
+        # takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
+        angleToAR = self.degreesPerPixel * (centerXTag - 960)   
+    
+        return True 
          
 
 
