@@ -1,0 +1,56 @@
+In order to run SWIG you must:
+install swig
+install python dev tools
+make sure you have gcc/g++ installed
+create interface files module.i
+
+Process:
+1. wrap edc.c into a library
+2. use edc.c to wrap sbc.c into a library
+3. use sbc.c to wrap gps.c into a library
+4. Then use gps.c library to wrap main.c or main.cpp
+
+=================REWRAPPING INSTRUCTIONS================
+to wrap edc.c:
+
+swig -python edc.i
+gcc -fpic -c -I/usr/include/python3.8 edc.c edc_wrap.c
+gcc -shared edc.o edc_wrap.o -o _edc.so
+python3
+import edc
+
+----- It seems to work
+============================================================================
+to wrap sbp.c:
+
+swig -python sbp.i
+gcc -fpic -c -I/usr/include/python3.8 sbp.c sbp_wrap.c
+gcc -shared sbp.o sbp_wrap.o -o _sbp.so edc.o 
+python3
+import sbp
+
+---- It seems to work too, adds edc.o to the linking step so that it can get the edc functions
+========================================================================================
+To wrap gps.c:
+
+swig -python gps.i
+gcc -fpic -c -I/usr/include/python3.8 gps.c gps_wrap.c
+gcc -shared gps.o gps_wrap.o -o _gps.so sbp.o edc.o
+python3
+import gps
+
+--- Seems to work
+==================================================================================
+To wrap main.c:
+
+swig -python main.i
+gcc -fpic -c -I/usr/include/python3.8 main.c main_wrap.c
+gcc -shared main.o main_wrap.o -o _gpsmain.so gps.o sbp.o edc.o
+python3
+import gpsmain
+gpsmain.gpsmain()
+
+--- Seems to work without the connection, though, just prints 0s for all the results
+==========================================================================================
+
+
