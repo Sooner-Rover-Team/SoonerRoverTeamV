@@ -1,6 +1,7 @@
-from gps import gps
+from Autonomous.gps import gps
 from math import cos, sin, atan2, pi, sqrt
-
+from threading import Thread
+from time import sleep
 
 class Location:
     def __init__(self):
@@ -12,8 +13,11 @@ class Location:
         self.old_longitude = 0
         self.height = 0
         self.time = 0
+        self.error = 0
         self.bearing = 0.0
         self.running = True
+        self.all_zero = True
+        self.wait_time = 0
 
     def config(self):
         # read from a file, probably configure this to work with
@@ -35,13 +39,19 @@ class Location:
 
     def start_GPS_thread(self):
         self.running = True
+        t = Thread(target=self.update_fields_loop, name=(
+                'update GPS fields'), args=(self))
+        t.daemon = True
+        t.start()
 
     def stop_GPS_thread(self):
         self.running = False
 
-    def start_GPS():
+    def start_GPS(self):
         # check the config for the swift ip and port
         # connect to it w gps_init
+        gps.gps_init(self.swift_IP, self.swift_port)
+        self.start_GPS_thread()
         pass
 
     def stop_GPS(self):
@@ -50,12 +60,23 @@ class Location:
     
     def update_fields_loop(self):
         while(self.running):
-            self.old_latitude = self.latitude
-            self.old_longitude = self.longitude
+            if gps.get_latitude() + gps.get_longitude() != 0:
+                self.old_latitude = self.latitude
+                self.old_longitude = self.longitude
 
-            # getter methods for gps latitude
+                self.latitude = gps.get_latitude()
+                self.longitude = gps.get_longitude()
+                self.height = gps.get_height()
+                self.time = gps.get_time()
+                self.error = gps.get_error()
+                self.bearing = self.calc_bearing(self.old_latitude, self.old_longitude, self.latitude, self.longitude)
+                self.all_zero = False
+            else:
+                all_zero = True
+            # maybe print info or sleep or something idk
+            sleep(self.wait_time)
+        return
 
-            self.bearing = calc_bearing(self.old_latitude, self.old_longitude, self.latitude, self.longitude)
     def calc_bearing(lat1:float, lon1:float, lat2:float, lon2:float):
         x = cos(lat2 * (pi/180.0)) * sin((lon2-lon1) * (pi/180.0))
         y = cos(lat1 * (pi/180.0)) * sin(lat2 * (pi/180.0)) - sin(lat1 * (pi/180.0)) * cos(lat2 * (pi/180.0)) * cos((lon2-lon1) * (pi/180.0))
