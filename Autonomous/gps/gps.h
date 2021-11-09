@@ -80,6 +80,9 @@ u32 socket_read(u8 *buff, u32 n, void *context);
 
 double get_latitude();
 double get_longitude();
+double get_height();
+double get_time();
+double get_error();
 
 /* Callback functions. References to these functions are passed
  * as one of the arguments in the sbp_register_callback() function.

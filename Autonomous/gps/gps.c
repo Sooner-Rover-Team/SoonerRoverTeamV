@@ -108,6 +108,15 @@ double get_latitude() {
 double get_longitude() {
   return pos_llh.lon;
 }
+double get_height() {
+  return pos_llh.height;
+}
+double get_time() {
+  return pos_llh.tow;
+}
+double get_error() {
+  return (pos_llh.h_accuracy + pos_llh.v_accuracy) / 2.0;
+}
 
 // see header file for description
 void *gps_thread()
