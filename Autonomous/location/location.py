@@ -1,4 +1,6 @@
-from Autonomous.gps import gps
+import sys
+sys.path.append('../')
+from gps import gps
 from math import cos, sin, atan2, pi, sqrt
 from threading import Thread
 from time import sleep
@@ -17,7 +19,7 @@ class Location:
         self.bearing = 0.0
         self.running = True
         self.all_zero = True
-        self.wait_time = 0
+        self.wait_time = 1
 
     def config(self):
         # read from a file, probably configure this to work with
@@ -40,7 +42,7 @@ class Location:
     def start_GPS_thread(self):
         self.running = True
         t = Thread(target=self.update_fields_loop, name=(
-                'update GPS fields'), args=(self))
+                'update GPS fields'), args=())
         t.daemon = True
         t.start()
 
@@ -51,8 +53,8 @@ class Location:
         # check the config for the swift ip and port
         # connect to it w gps_init
         gps.gps_init(self.swift_IP, self.swift_port)
+        print("starting data reading thread")
         self.start_GPS_thread()
-        pass
 
     def stop_GPS(self):
         self.running = False
