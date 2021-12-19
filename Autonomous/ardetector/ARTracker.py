@@ -154,17 +154,35 @@ class ARTracker:
             return 2
 
 
-    # def findAR(self, id):
+    def findAR(self, id):
+        for i in range(self.caps.length):
+            frame = self.caps[i] 
+            if self.arFound(id, frame, False): 
+                return True
 
-    # def findARs(self, id1, id2):
-
-    # def trackAR(self, id):
-
-    # def trackARs(self, id1, id2):
+        return False
 
 
-cams = np.empty(3, dtype=str)
-cams[0] = '2.3'
-cams[1] = '2.4'
-cams[2] = '2.2'
-tracker = ARTracker(cams)
+    def findARs(self, id1, id2):
+        for i in range(self.caps.length):
+            frame = self.caps[i]
+            if self.countValidARs(id1, id2, frame, False):
+                 return True
+
+        return False
+
+
+    def trackAR(self, id):
+        frame = self.caps[0]
+        if self.arFound(id, frame, False): 
+            return True
+        
+        return False
+
+
+    def trackARs(self, id1, id2):
+        frame = self.caps[0]
+        if self.countValidARs(id1, id2, frame, False):
+             return True
+        
+        return False
