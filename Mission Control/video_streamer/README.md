@@ -13,7 +13,7 @@ sudo apt-get install python3-venv
 Make sure you are in /SoRo-19-20/Mission Control/video_streamer/ then run
 
 ```bash
-python3 -m venv .
+python3 -m venv .venv
 ```
 
 This will create a new virtual environment in /video_streamer/. The virtual environment must be activated every time the program needs to be run which can be done with:
