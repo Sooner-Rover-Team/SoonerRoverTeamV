@@ -6,10 +6,10 @@ sys.path.append('../')
 
 # from gps import gps 
 from time import sleep
-from libs import location
+from libs import Location
 
 if __name__ == '__main__':
-    l = location.Location()
+    l = Location.Location('10.0.0.222','55556')
     print('starting gps')
     l.start_GPS()
     print('reading data')

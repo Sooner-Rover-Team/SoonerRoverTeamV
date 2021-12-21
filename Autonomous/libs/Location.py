@@ -6,9 +6,9 @@ from threading import Thread
 from time import sleep
 
 class Location:
-    def __init__(self):
-        self.swift_IP = ""
-        self.swift_port = ""
+    def __init__(self, ip, port):
+        self.swift_IP = ip
+        self.swift_port = port
         self.latitude = 0
         self.longitude = 0
         self.old_latitude = 0
