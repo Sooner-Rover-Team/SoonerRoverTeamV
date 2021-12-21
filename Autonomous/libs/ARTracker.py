@@ -2,11 +2,14 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 import configparser
+import os
+
 
 class ARTracker:
 
     # Constructor
-    def __init__(self, cameras):
+    def __init__(self, cameras, write=False):
+        self.write=write
         self.distanceToAR = 0
         self.distanceToAR1 = 0
         self.distanceToAR2 = 0
@@ -20,7 +23,7 @@ class ARTracker:
         self.cameras = cameras
         # Open the config file
         config = configparser.ConfigParser()
-        config.read('../config.ini')
+        config.read(os.path.dirname(__file__) + '/../config.ini')
 
         # Set variables from the config file
         self.degreesPerPixel = float(config['ARTRACKER']['DEGREES_PER_PIXEL'])
@@ -31,8 +34,9 @@ class ARTracker:
         self.frameHeight = int(config['ARTRACKER']['FRAME_HEIGHT'])
 
         # Initialize video writer, fps is set 
-        self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(
-            self.format[0], self.format[1], self.format[2], self.format[3]), 5, (self.frameWidth, self.frameHeight), False)
+        if self.write:
+            self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(
+                self.format[0], self.format[1], self.format[2], self.format[3]), 5, (self.frameWidth, self.frameHeight), False)
         # Set the ar tag dictionary
         self.tagDict = aruco.Dictionary_get(aruco.DICT_4X4_50)
         # Initialize cameras
@@ -47,7 +51,7 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
 
 
-    def arFound(self, id, image, writeToFile):
+    def arFound(self, id, image):
         # converts to grayscale
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image)  
         
@@ -69,7 +73,7 @@ class ARTracker:
             
                 if index != -1:
                     print("Found the correct tag!")
-                    if writeToFile:
+                    if self.write:
                         self.videoWriter.write(bw)   #purely for debug   
                         cv2.waitKey(1)
                     break                    
@@ -78,7 +82,7 @@ class ARTracker:
                     print("Found a tag but was not the correct one") 
              
             if i == 220:  #did not find any AR tags with any b&w cutoff
-                if writeToFile:
+                if self.write:
                     self.videoWriter.write(image) 
                     cv2.waitKey(1)
                 self.distanceToAR = -1 
@@ -95,7 +99,7 @@ class ARTracker:
         return True 
          
 
-    def countValidARs(self, id1, id2, image, writeToFile):
+    def countValidARs(self, id1, id2, image):
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image) # converts to grayscale
     
         # tries converting to b&w using different different cutoffs to find the perfect one for the ar tag
@@ -107,13 +111,13 @@ class ARTracker:
                     print("Just found one post")
 
                 else:
-                    if writeToFile:
+                    if self.write:
                         mFrame = image > i # purely for debug
                         self.videoWriter.write(mFrame) # purely for debug
                     break
         
             if i == 220: # did not ever find two ars. TODO add something for if it finds one tag
-                if writeToFile:
+                if self.write:
                     cv2.waitKey(100)
                     self.videoWriter.write(image)
                 self.distanceToAR = -1
@@ -161,15 +165,13 @@ class ARTracker:
     #specify id2 if you want to look for a gate
     #set write to true to write out images to disk
     #cameras=number of cameras to check. -1 for all of them
-    def findAR(self, id1, id2=False, write=False, cameras=-1):
+    def findAR(self, id1, id2=False, cameras=-1):
         if cameras == -1:
             cameras=len(self.caps)
             
         for i in range(cameras):
             ret, frame = self.caps[i].read()
-            cv2.imshow('im', frame)
-            cv2.waitKey(1)
-            if not id2 and self.arFound(id1, frame, write) or id2 and self.countValidARs(id1, id2, frame, write): 
+            if not id2 and self.arFound(id1, frame) or id2 and self.countValidARs(id1, id2, frame): 
                 return True
 
         return False

@@ -1,8 +1,15 @@
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+import sys
+sys.path.append('../')
+
+# from gps import gps 
 from time import sleep
-from location.location import Location
+from libs import location
 
 if __name__ == '__main__':
-    l = Location()
+    l = location.Location()
     print('starting gps')
     l.start_GPS()
     print('reading data')
