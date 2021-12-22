@@ -16,4 +16,5 @@ if __name__ == '__main__':
     while True:
         print(l.latitude)
         print(l.longitude)
+        print(l.bearing)
         sleep(.5)

@@ -1,3 +1,4 @@
+#If someone knows a better way to write the next 5 lines, lmk
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -6,9 +7,9 @@ sys.path.append('../')
 
 from libs import ARTracker
 
-tracker = ARTracker.ARTracker(['/dev/video2'], write=True) #ARTracker requires a list of camera files
+tracker = ARTracker.ARTracker(['/dev/video0'], write=True) #ARTracker requires a list of camera files
 
-for i in range(0,101):
+while True:
     tracker.findAR(0)
     print('Distance (in cm): ', tracker.distanceToAR)
     print('Angle: ', tracker.angleToAR)

@@ -22,7 +22,7 @@ class ARTracker:
         #self.cameras = np.empty(3, dtype=str)
         self.cameras = cameras
         # Open the config file
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(allow_no_value=True)
         config.read(os.path.dirname(__file__) + '/../config.ini')
 
         # Set variables from the config file
@@ -94,7 +94,7 @@ class ARTracker:
     
         self.centerXTag = (self.corners[index][0][1][0] + self.corners[index][0][0][0]) / 2 
         # takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
-        self.angleToAR = self.degreesPerPixel * (self.centerXTag - 960)   
+        self.angleToAR = self.degreesPerPixel * (self.centerXTag - self.frameWidth/2)   
     
         return True 
          

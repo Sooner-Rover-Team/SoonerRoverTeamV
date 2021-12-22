@@ -8,7 +8,7 @@ class Drive:
     def init(baseSpeed):
         self.baseSpeed = baseSpeed
         
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(allow_no_value=True)
         config.read(os.path.dirname(__file__) + '/../config.ini')
         
         mbedIP = str(config['CONFIG']['MBED_IP'])
