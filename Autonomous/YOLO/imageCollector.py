@@ -3,6 +3,7 @@ import os
 import argparse
 import time
 
+# set up parser
 my_parser = argparse.ArgumentParser(description='save images to file')
 
 # add the arguments NEED TO WORK ON THESE
