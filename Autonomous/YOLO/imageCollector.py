@@ -1,36 +1,62 @@
-import cv2
+import cv2 as cv
 import os
 import argparse
 import time
 
-# set up parser
-my_parser = argparse.ArgumentParser(description='save images to file')
+parser = argparse.ArgumentParser(description='save images to file')
 
 # add the arguments NEED TO WORK ON THESE
 # camera
-my_parser.add_argument('cam', help='camera path', type=int, default=0)
+parser.add_argument('-cam', help='camera path', type=int, default=0)
 
 # filepath
-my_parser.add_argument('filepath', help='File path where images will be stored')
+parser.add_argument('-file', help='File path where images will be stored', default='.')
+
+# set frame capture rate to every 5 frames 
+parser.add_argument('-captureRate', help='frame capture rate specifies collection frequency', type=int, default='5')
+
+# set iteration to stop after 200 frames has been collected
+parser.add_argument('-iterationLength', help='the duration of one iteration', type=int, default= 200)
 
 # Execute the parse_args() method
-args = my_parser.parse_args()
+args = parser.parse_args()
 
-cam = cv2.VideoCapture(args.cam)
+# Creates camera object
+cam = cv.VideoCapture(args.cam)
 
-# camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-# camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+# define counter 
+counter = 0
+
+# define the variable that counts number of frames collected
+numFramesCollected = 0
 
 while True:
 
+    # reading from frame
     ret, frame = cam.read()
-    cv2.imshow('preview', frame)
 
-    filename = filepath + args.file + '/' + str(time.time()) + '.jpg'
-    cv2.imwrite(filename, frame)
+    # updates the window "preview" to show user captured frames 
+    cv.imshow('preview', frame)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # incrementing count 
+    counter += 1
+
+    # if count equals captureRate, save image 
+    if counter == args.captureRate:
+
+        # name filename based on timestamp 
+        filename = args.file + '/' + str(time.time()) + '.jpg'
+        cv.imwrite(filename, frame)
+
+        # increment the number of frames collected 
+        numFramesCollected += 1
+
+        #reset counter
+        counter = 0
+
+    # quit if user presses 'q' or when 200 frames has been collected 
+    if cv.waitKey(1) == ord('q') or numFramesCollected == args.iterationLength:
         break
 
 cam.release()
-cv2.destroyAllWindow()
+cv.destroyAllWindow()
