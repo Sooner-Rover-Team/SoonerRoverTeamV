@@ -48,6 +48,12 @@ while True:
         filename = args.file + '/' + str(time.time()) + '.jpg'
         cv.imwrite(filename, frame)
 
+        # create .txt file with the same filename 
+        # open("filename.txt", "w") -- accessmode "w" indicates python will write file and create 
+        txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w")
+        txtfilename.write("")
+        txtfilename.close
+
         # increment the number of frames collected 
         numFramesCollected += 1
 
