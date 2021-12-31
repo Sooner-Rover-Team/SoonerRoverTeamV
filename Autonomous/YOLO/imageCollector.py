@@ -88,7 +88,7 @@ while True:
                     # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
                     # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
                     xTag = ((corners[0][0][1][0] + corners[0][0][0][0]) / 2 ) / width
-                    yTag = ((corners[0][0][1][0] + corners[0][0][0][0]) / 2 ) / height
+                    yTag = ((corners[0][0][1][1] + corners[0][0][2][1]) / 2 ) / height
 
                     # Width and Height of Tag: 
                     # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
