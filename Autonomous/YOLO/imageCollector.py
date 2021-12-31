@@ -33,10 +33,10 @@ args = parser.parse_args()
 # Creates camera object 
 cam = cv.VideoCapture(args.cam)
 
-# define counter 
+# define counter (this counter determines the rate at which frames are collected, ie every 5 frames)
 counter = 0
 
-# define the variable that counts number of frames collected 
+# define the variable that counts number of frames collected (determines the iteration length of collection, ie stop at 200)
 numFramesCollected = 0
 
 while True:
