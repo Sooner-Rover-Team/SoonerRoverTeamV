@@ -10,14 +10,14 @@ class ARTracker:
     # Constructor
     def __init__(self, cameras, write=False):
         self.write=write
-        self.distanceToAR = 0
-        self.distanceToAR1 = 0
-        self.distanceToAR2 = 0
+        self.distanceToTag = -1
+        self.distanceToTag1 = 0
+        self.distanceToTag2 = 0
         self.widthOfTag = 0.0
         self.widthOfTag1 = 0
         self.widthOfTag2 = 0
         self.centerXTag = 0
-        self.angleToAR = 0.0
+        self.angleToTag = -999.9
 
         #self.cameras = np.empty(3, dtype=str)
         self.cameras = cameras
@@ -51,11 +51,12 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
 
 
-    def arFound(self, id, image):
+    def arFound(self, id1, image, id2=-1):
         # converts to grayscale
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image)  
         
-        index = -1
+        index1 = -1
+        index2 = -1
         bw = image #will hold the black and white image
         # tries converting to b&w using different different cutoffs to find the perfect one for the current lighting
         for i in range(40, 221, 60):
@@ -63,115 +64,86 @@ class ARTracker:
             (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers(bw, self.tagDict)   
 
             if not (self.markerIDs is None):
-             
-                index = -1 
-                # this just checks to make sure that it found the right tag
-                for i in range(len(self.markerIDs)):  
-                    if self.markerIDs[i] == id:
-                        index = i 
-                        break  
-            
-                if index != -1:
-                    print("Found the correct tag!")
-                    if self.write:
-                        self.videoWriter.write(bw)   #purely for debug   
-                        cv2.waitKey(1)
-                    break                    
+                
+                if id2==-1:
+                    index1 = -1 
+                    # this just checks to make sure that it found the right tag
+                    for i in range(len(self.markerIDs)):  
+                        if self.markerIDs[i] == id1:
+                            index1 = i 
+                            break  
+                
+                    if index1 != -1:
+                        print("Found the correct tag!")
+                        if self.write:
+                            self.videoWriter.write(bw)   #purely for debug   
+                            cv2.waitKey(1)
+                        break                    
+                    
+                    else:
+                        print("Found a tag but was not the correct one") 
                 
                 else:
-                    print("Found a tag but was not the correct one") 
-             
+                    index1 = -1
+                    index2 = -1
+                    
+                    if len(self.markerIDs) == 1:
+                       print('Only found tag ', self.markerIDs[0])
+                    else:
+                        for i in range(len(self.markerIDs) - 1, -1,-1): #I trust the biggest tags the most
+                            if self.markerIDs[i] == id1:
+                                index1 = i 
+                            elif self.markerIDs[i] == id2:
+                                index2 = i
+                    if index1 != -1 and index2 != -1:
+                        print('Found both tags!')
+                        if self.write:
+                            self.videoWriter.write(bw)   #purely for debug   
+                            cv2.waitKey(1)
+                        break                        
+                     
             if i == 220:  #did not find any AR tags with any b&w cutoff
                 if self.write:
                     self.videoWriter.write(image) 
                     cv2.waitKey(1)
-                self.distanceToAR = -1 
-                self.angleToAR = 0 
+                self.distanceToTag = -1 
+                self.angleToTag = -999 
                 return False 
         
-        self.widthOfTag = self.corners[index][0][1][0] - self.corners[index][0][0][0] 
-        self.distanceToAR = (self.knownTagWidth * self.focalLength) / self.widthOfTag 
-    
-        self.centerXTag = (self.corners[index][0][1][0] + self.corners[index][0][0][0]) / 2 
-        # takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
-        self.angleToAR = self.degreesPerPixel * (self.centerXTag - self.frameWidth/2)   
-    
-        return True 
-         
-
-    def countValidARs(self, id1, id2, image):
-        cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image) # converts to grayscale
-    
-        # tries converting to b&w using different different cutoffs to find the perfect one for the ar tag
-        for i in range(40, 221, 60):
-            (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers((image > i), self.tagDict)
-            if self.markerIDs.length > 0:
-
-                if self.markerIDs.length == 1:
-                    print("Just found one post")
-
-                else:
-                    if self.write:
-                        mFrame = image > i # purely for debug
-                        self.videoWriter.write(mFrame) # purely for debug
-                    break
+        if id2 == -1:
+            self.widthOfTag = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
+            self.distanceToTag = (self.knownTagWidth * self.focalLength) / self.widthOfTag 
         
-            if i == 220: # did not ever find two ars. TODO add something for if it finds one tag
-                if self.write:
-                    cv2.waitKey(100)
-                    self.videoWriter.write(image)
-                self.distanceToAR = -1
-                self.angleToAR = 0
-                return 0
-
-        index1 = -1
-        index2 = -1
-        for i in range(len(self.markerIDs)): # this just checks to make sure that it found the right tags
-            if self.markerIDs[i] == id1 or self.markerIDs[i] == id2:
-                if self.markerIDs[i] == id1:
-                    index1 = i
-                else:
-                    index2=i
-            
-                if index1 != -1 and index2 != -1:
-                    break
-
-        if index1 == -1 or index2 == -1: 
-            self.distanceToAR = -1
-            self.angleToAR = 0
-            print(f"index1: {index1} \nindex2: {index2}")
-            if index1 != -1 or index2 != -1:
-                return 1
-            return 0 # no correct ar tags found
+            self.centerXTag = (self.corners[index1][0][1][0] + self.corners[index1][0][0][0]) / 2 
+            # takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
+            self.angleToTag = self.degreesPerPixel * (self.centerXTag - self.frameWidth/2)
         else:
-            self.widthOfTag1 = self.corners[index1][1].x - self.corners[index1][0].x
-            self.widthOfTag2 = self.corners[index2][1].x - self.corners[index2][0].x
+            self.widthOfTag1 = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
+            self.widthOfTag2 = self.corners[index2][0][1][0] - self.corners[index2][0][0][0] 
 
             #distanceToAR = (knownWidthOfTag(20cm) * focalLengthOfCamera) / pixelWidthOfTag
-            self.distanceToAR1 = (self.knownTagWidth * self.focalLength) / self.widthOfTag1
-            self.distanceToAR2 = (self.knownTagWidth * self.focalLength) / self.widthOfTag2
-            print(f"1: {self.distanceToAR1} \n2: {self.distanceToAR2}")
-            print(f"focal: {self.focalLength} \nwidth: {self.widthOfTag}")
-            self.distanceToAR = (self.distanceToAR1 + self.distanceToAR2) / 2
-            print(self.distanceToAR)
+            self.distanceToTag1 = (self.knownTagWidth * self.focalLength) / self.widthOfTag1
+            self.distanceToTag2 = (self.knownTagWidth * self.focalLength) / self.widthOfTag2
+            print(f"1: {self.distanceToTag1} \n2: {self.distanceToTag2}")
+            self.distanceToTag = (self.distanceToTag1 + self.distanceToTag2) / 2
         
-            self.centerXTag = (self.corners[index1][1].x + self.corners[index2][0].x) / 2
-            self.angleToAR = self.degreesPerPixel * (self.centerXTag - 960) #takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
-        
-            return 2
-
+            self.centerXTag = (self.corners[index1][0][1][0] + self.corners[index2][0][0][0]) / 2
+            #takes the pixels from the tag to the center of the image and multiplies it by the degrees per pixel
+            self.angleToTag = self.degreesPerPixel * (self.centerXTag - self.frameWidth/2) 
+    
+        return True 
 
     #id1 is the tag you want to look for
     #specify id2 if you want to look for a gate
     #set write to true to write out images to disk
     #cameras=number of cameras to check. -1 for all of them
-    def findAR(self, id1, id2=False, cameras=-1):
+    def findAR(self, id1, id2=-1, cameras=-1):
         if cameras == -1:
             cameras=len(self.caps)
             
         for i in range(cameras):
             ret, frame = self.caps[i].read()
-            if not id2 and self.arFound(id1, frame) or id2 and self.countValidARs(id1, id2, frame): 
+            if self.arFound(id1, frame, id2=id2): 
                 return True
 
         return False
