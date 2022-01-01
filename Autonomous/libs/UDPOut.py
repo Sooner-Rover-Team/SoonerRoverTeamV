@@ -24,7 +24,7 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
         msg[i + 2] = speeds[i]
         sum += speeds[i]
 
-    #add verification bit
+        #add verification bit
         msg[8] = int(bin(sum)[2:10], 2) #capped at 8 binary characters of length
 
     #send wheel speeds

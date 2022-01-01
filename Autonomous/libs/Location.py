@@ -50,11 +50,8 @@ class Location:
         self.running = False
 
     def start_GPS(self):
-        # check the config for the swift ip and port
         # connect to it w gps_init
         gps.gps_init(self.swift_IP, self.swift_port)
-        print("starting data reading thread")
-        self.start_GPS_thread()
 
     def stop_GPS(self):
         self.running = False
@@ -79,7 +76,7 @@ class Location:
             sleep(self.wait_time)
         return
 
-    def calc_bearing(lat1:float, lon1:float, lat2:float, lon2:float):
+    def calc_bearing(self,lat1:float, lon1:float, lat2:float, lon2:float):
         x = cos(lat2 * (pi/180.0)) * sin((lon2-lon1) * (pi/180.0))
         y = cos(lat1 * (pi/180.0)) * sin(lat2 * (pi/180.0)) - sin(lat1 * (pi/180.0)) * cos(lat2 * (pi/180.0)) * cos((lon2-lon1) * (pi/180.0))
         return (180.0/pi) * atan2(x,y)
