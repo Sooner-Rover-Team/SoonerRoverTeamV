@@ -94,7 +94,7 @@ while True:
                     # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
                     # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
                     widthOfTag = (corners[0][0][1][0] - corners[0][0][0][0]) / width
-                    heightOfTag = (corners[0][0][1][0] - corners[0][0][0][0]) / height
+                    heightOfTag = (corners[0][0][1][1] - corners[0][0][2][1]) / height
 
                     # converting centerXTag and centerYTag from numpy long to str (if not, will produce error)
                     print("(" + str(xTag) + ", " + str(yTag) + ")")
