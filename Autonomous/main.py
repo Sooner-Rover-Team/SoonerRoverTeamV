@@ -1,7 +1,7 @@
-#If someone knows a better way to write the next 5 lines, lmk
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+import sys
 from libs import Drive
 
 #TODO: LEDS!
@@ -25,6 +25,7 @@ def drive(rover, id1, id2=-1):
         rover.trackARMarker(id1, id2)
 
 if __name__ == "__main__":
-    rover = Drive.Drive(40, ['/dev/video2'])
+    del sys.argv[0]
+    rover = Drive.Drive(40, sys.argv)
 
     drive(rover, 1)

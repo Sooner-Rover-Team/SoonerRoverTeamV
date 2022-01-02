@@ -150,9 +150,9 @@ class Drive:
         return False
                 
     def trackARMarker(self, id1, id2=-1):
-        stopDistance = 20 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
+        stopDistance = 250 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
         timesNotFound = -1
-        self.tracker.findMarker(id1, id2) #Gets and initial angle from the main camera
+        self.tracker.findMarker(id1, id2, cameras=1) #Gets and initial angle from the main camera
         self.errorAccumulation = 0
         
         if id2 == -1:
