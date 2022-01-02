@@ -22,9 +22,9 @@ def drive(rover, id1, id2=-1):
     found = rover.driveAlongCoordinates(locations,id1, id2)
     
     if id1 != -1:
-        rover.trackARTag(id1, id2)
+        rover.trackARMarker(id1, id2)
 
 if __name__ == "__main__":
-    rover = Drive.Drive(40, ['/dev/video4'])
+    rover = Drive.Drive(40, ['/dev/video2'])
 
     drive(rover, 1)
