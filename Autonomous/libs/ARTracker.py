@@ -53,6 +53,8 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
 
+    def getDistanceToMarkers(corners, index):
+        pass
 
     def markerFound(self, id1, image, id2=-1):
         # converts to grayscale
@@ -123,7 +125,7 @@ class ARTracker:
             centerYMarker = (self.corners[index1][0][0][1] + self.corners[index1][0][2][1]) / 2 
             vAngleToMarker = abs(self.vDegreesPerPixel * (centerYMarker - self.frameHeight/2))
             realFocalLength = self.focalLength + (hAngleToMarker/30) * (self.focalLength30H - self.focalLength) + \
-                (vAngleToMarker/30) * (self.focalLength30V - self.focalLength)
+                (vAngleToMarker/30) * (self.focalLength30V - self.focalLength) #if focalLength30H and V is 0 then realFocalLength = focalLength
             self.widthOfMarker = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
             self.distanceToMarker = (self.knownMarkerWidth * realFocalLength) / self.widthOfMarker 
             
@@ -132,8 +134,8 @@ class ARTracker:
             self.widthOfMarker2 = self.corners[index2][0][1][0] - self.corners[index2][0][0][0] 
 
             #distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
-            self.distanceToMarker1 = (self.knownMarkerWidth * self.focalLength) / self.widthOfMarker1
-            self.distanceToMarker2 = (self.knownMarkerWidth * self.focalLength) / self.widthOfMarker2
+            self.distanceToMarker1 = (self.knownMarkerWidth * focalLength1) / self.widthOfMarker1
+            self.distanceToMarker2 = (self.knownMarkerWidth * focalLength2) / self.widthOfMarker2
             print(f"1: {self.distanceToMarker1} \n2: {self.distanceToMarker2}")
             self.distanceToMarker = (self.distanceToMarker1 + self.distanceToMarker2) / 2
         
