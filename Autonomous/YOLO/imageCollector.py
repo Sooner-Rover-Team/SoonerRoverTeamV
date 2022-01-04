@@ -25,7 +25,7 @@ parser.add_argument('-captureRate', help='frame capture rate specifies collectio
 parser.add_argument('-iterationLength', help='the duration of one iteration', type=int, default= 200)
 
 # arMode - user decides through command prompt if they want code to run through arMode 
-parser.add_argument('-arMode', help='arMode identifies the arTags in captured frames, argument is "run"', type=str, default='.')
+parser.add_argument('-arMode', help='arMode identifies the arTags in captured frames, argument is "run"', type=bool, default=False)
 
 # Execute the parse_args() method (parse the argument) 
 args = parser.parse_args()
@@ -40,10 +40,10 @@ counter = 0
 numFramesCollected = 0
 
 while True:
-
+    fileTime = str(time.time_ns())
     # if the user specifies to run code through arMode 
-    if args.arMode == "run": 
-
+    if args.arMode: 
+        
         # testing block 
         # reading from frame 
         ret, frame = cam.read() 
@@ -61,9 +61,9 @@ while True:
             bwFrame = cv.cvtColor(frame, cv.COLOR_RGB2GRAY, frame) 
 
             # name filename based on timestamp and add it to specified filepath 
-            filename = args.file + '/' + str(time.time()) + '.jpg'
+            filename = args.file + '/' + fileTime + '.jpg'
             # assigning the converted grayscale image to the filename
-            cv.imwrite(filename, bwFrame)
+            
 
             # Add note 
             for i in range(40, 221, 60): 
@@ -77,31 +77,32 @@ while True:
 
                 # determining the height and width of the frame (NOT THE TAG) 
                 height, width = bwFrame.shape[0], bwFrame.shape[1]
-                # print("h" + str(h) + ", w" + str(w))       #debugging print
+                # print("h" + str(h) + ", w" + str(w))      
                 
                 # if any markerIDs were detected in the frame 
                 # basically if markerIDs > 0 
                 if not (markerIDs is None) : 
-                    
+                    cv.imwrite(filename, frame)
                     # X and Y coordinates: 
                     # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
                     # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
                     # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
-                    xTag = ((corners[0][0][1][0] + corners[0][0][0][0]) / 2 ) / width
+                    xTag = ((corners[0][0][1][0] + corners[0][0][0][0] + corners[0][0][2][0] + corners[0][0][3][0]) / 4 ) / width
                     yTag = ((corners[0][0][1][1] + corners[0][0][2][1]) / 2 ) / height
 
                     # Width and Height of Tag: 
                     # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
                     # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
-                    widthOfTag = (corners[0][0][1][0] - corners[0][0][0][0]) / width
-                    heightOfTag = (corners[0][0][1][1] - corners[0][0][2][1]) / height
+                    widthOfTag = ((corners[0][0][1][0] - corners[0][0][0][0]) + corners[0][0][2][0] - corners[0][0][3][0]) / (2*width)
+                    heightOfTag = (corners[0][0][2][1] - corners[0][0][1][1]) / height
 
                     # converting centerXTag and centerYTag from numpy long to str (if not, will produce error)
-                    print("(" + str(xTag) + ", " + str(yTag) + ")")
+                    print(f'(x: {xTag}, y: {yTag}, width: {widthOfTag}, height: {heightOfTag}')
+                    #print("(" + str(xTag) + ", " + str(yTag) + ")")
 
                     # create .txt file with the same filename 
                     # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                    txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w") 
+                    txtfilename = open(args.file + '/' + fileTime + '.txt', "w") 
                     # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
                     # we are writing in the txt file since there was an AR Tag found 
                     txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag))
@@ -111,7 +112,7 @@ while True:
                 else: 
                     # create .txt file with the same filename 
                     # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                    txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w")
+                    txtfilename = open(args.file + '/' + fileTime + '.txt', "w")
                     # file will be empty if AR Tag is not found 
                     txtfilename.write("")
                     txtfilename.close
@@ -143,12 +144,12 @@ while True:
         if counter == args.captureRate:
 
             # name filename based on timestamp and add it to specified filepath 
-            filename = args.file + '/' + str(time.time()) + '.jpg'
+            filename = args.file + '/' + fileTime + '.jpg'
             cv.imwrite(filename, frame)
 
             # create .txt file with the same filename 
             # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-            txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w")
+            txtfilename = open(args.file + '/' + fileTime + '.txt', "w")
             # file will be empty if code is not run through arMode  
             txtfilename.write("")
             txtfilename.close
@@ -164,4 +165,4 @@ while True:
             break
 
 cam.release()
-cv.destroyAllWindow()
+cv.destroyAllWindows()
