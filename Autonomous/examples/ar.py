@@ -7,9 +7,9 @@ sys.path.append('../')
 
 from libs import ARTracker
 
-tracker = ARTracker.ARTracker(['/dev/video2'], write=False) #ARTracker requires a list of camera files
+tracker = ARTracker.ARTracker(['/dev/video0'], write=False) #ARTracker requires a list of camera files
 
 while True:
-    tracker.findMarker(0)#, id2 = 1)
+    tracker.findMarker(4)#, id2 = 1)
     print('Distance (in cm): ', tracker.distanceToMarker)
     print('Angle: ', tracker.angleToMarker)

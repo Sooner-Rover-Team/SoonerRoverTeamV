@@ -27,7 +27,10 @@ class ARTracker:
 
         # Set variables from the config file
         self.degreesPerPixel = float(config['ARTRACKER']['DEGREES_PER_PIXEL'])
+        self.vDegreesPerPixel = float(config['ARTRACKER']['VDEGREES_PER_PIXEL'])
         self.focalLength = float(config['ARTRACKER']['FOCAL_LENGTH'])
+        self.focalLength30H = float(config['ARTRACKER']['FOCAL_LENGTH30H'])
+        self.focalLength30V = float(config['ARTRACKER']['FOCAL_LENGTH30V'])
         self.knownMarkerWidth = float(config['ARTRACKER']['KNOWN_TAG_WIDTH'])
         self.format = config['ARTRACKER']['FORMAT']
         self.frameWidth = int(config['ARTRACKER']['FRAME_WIDTH'])
@@ -111,12 +114,19 @@ class ARTracker:
                 return False 
         
         if id2 == -1:
-            self.widthOfMarker = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
-            self.distanceToMarker = (self.knownMarkerWidth * self.focalLength) / self.widthOfMarker 
-        
             self.centerXMarker = (self.corners[index1][0][1][0] + self.corners[index1][0][0][0]) / 2 
             # takes the pixels from the marker to the center of the image and multiplies it by the degrees per pixel
             self.angleToMarker = self.degreesPerPixel * (self.centerXMarker - self.frameWidth/2)
+        
+            #distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
+            hAngleToMarker = abs(self.angleToMarker)
+            centerYMarker = (self.corners[index1][0][0][1] + self.corners[index1][0][2][1]) / 2 
+            vAngleToMarker = abs(self.vDegreesPerPixel * (centerYMarker - self.frameHeight/2))
+            realFocalLength = self.focalLength + (hAngleToMarker/30) * (self.focalLength30H - self.focalLength) + \
+                (vAngleToMarker/30) * (self.focalLength30V - self.focalLength)
+            self.widthOfMarker = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
+            self.distanceToMarker = (self.knownMarkerWidth * realFocalLength) / self.widthOfMarker 
+            
         else:
             self.widthOfMarker1 = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
             self.widthOfMarker2 = self.corners[index2][0][1][0] - self.corners[index2][0][0][0] 
