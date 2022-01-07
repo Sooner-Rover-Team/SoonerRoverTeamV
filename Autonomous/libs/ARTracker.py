@@ -11,13 +11,9 @@ class ARTracker:
     def __init__(self, cameras, write=False):
         self.write=write
         self.distanceToMarker = -1
-        self.distanceToMarker1 = 0
-        self.distanceToMarker2 = 0
-        self.widthOfMarker = 0.0
-        self.widthOfMarker1 = 0
-        self.widthOfMarker2 = 0
-        self.centerXMarker = 0
         self.angleToMarker = -999.9
+        self.index1 = -1
+        self.index2 = -1
 
         #self.cameras = np.empty(3, dtype=str)
         self.cameras = cameras
@@ -52,16 +48,14 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
             self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
-
-    def getDistanceToMarkers(corners, index):
-        pass
-
+    
+    #id1 is the main ar tag to track, id2 is if you're looking at a gatepost, image is the image to analyze
     def markerFound(self, id1, image, id2=-1):
         # converts to grayscale
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image)  
         
-        index1 = -1
-        index2 = -1
+        self.index1 = -1
+        self.index2 = -1
         bw = image #will hold the black and white image
         # tries converting to b&w using different different cutoffs to find the perfect one for the current lighting
         for i in range(40, 221, 60):
@@ -70,15 +64,15 @@ class ARTracker:
 
             if not (self.markerIDs is None):
                 
-                if id2==-1:
-                    index1 = -1 
+                if id2==-1: #single post
+                    self.index1 = -1 
                     # this just checks to make sure that it found the right marker
                     for i in range(len(self.markerIDs)):  
                         if self.markerIDs[i] == id1:
-                            index1 = i 
+                            self.index1 = i 
                             break  
                 
-                    if index1 != -1:
+                    if self.index1 != -1:
                         print("Found the correct marker!")
                         if self.write:
                             self.videoWriter.write(bw)   #purely for debug   
@@ -88,19 +82,18 @@ class ARTracker:
                     else:
                         print("Found a marker but was not the correct one") 
                 
-                else:
-                    index1 = -1
-                    index2 = -1
-                    
-                    if len(self.markerIDs) == 1:
+                else: #gate post
+                    self.index1 = -1
+                    self.index2 = -1
+                    if len(self.markerIDs) == 1: 
                        print('Only found marker ', self.markerIDs[0])
                     else:
-                        for i in range(len(self.markerIDs) - 1, -1,-1): #I trust the biggest markers the most
-                            if self.markerIDs[i] == id1:
-                                index1 = i 
-                            elif self.markerIDs[i] == id2:
-                                index2 = i
-                    if index1 != -1 and index2 != -1:
+                        for j in range(len(self.markerIDs) - 1, -1,-1): #I trust the biggest markers the most
+                            if self.markerIDs[j][0] == id1:
+                                self.index1 = j 
+                            elif self.markerIDs[j][0] == id2:
+                                self.index2 = j
+                    if self.index1 != -1 and self.index2 != -1:
                         print('Found both markers!')
                         if self.write:
                             self.videoWriter.write(bw)   #purely for debug   
@@ -116,39 +109,69 @@ class ARTracker:
                 return False 
         
         if id2 == -1:
-            self.centerXMarker = (self.corners[index1][0][1][0] + self.corners[index1][0][0][0]) / 2 
+            centerXMarker = (self.corners[self.index1][0][0][0] + self.corners[self.index1][0][1][0] + \
+                self.corners[self.index1][0][2][0] + self.corners[self.index1][0][3][0]) / 4
             # takes the pixels from the marker to the center of the image and multiplies it by the degrees per pixel
-            self.angleToMarker = self.degreesPerPixel * (self.centerXMarker - self.frameWidth/2)
+            self.angleToMarker = self.degreesPerPixel * (centerXMarker - self.frameWidth/2)
         
-            #distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
+            '''
+            distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
+            focalLength = focal length at 0 degrees horizontal and 0 degrees vertical
+            focalLength30H = focal length at 30 degreees horizontal and 0 degrees vertical
+            focalLength30V = focal length at 30 degrees vertical and 0 degrees horizontal
+            realFocalLength of camera = focalLength 
+                                        + (horizontal angle to marker/30) * (focalLength30H - focalLength)
+                                        + (vertical angle to marker / 30) * (focalLength30V - focalLength)
+            If focalLength30H and focalLength30V both equal focalLength then realFocalLength = focalLength which is good for non huddly cameras
+            Please note that the realFocalLength calculation is an approximations that could be much better if anyone wants to try to come up with something better
+            '''
             hAngleToMarker = abs(self.angleToMarker)
-            centerYMarker = (self.corners[index1][0][0][1] + self.corners[index1][0][2][1]) / 2 
+            centerYMarker = (self.corners[self.index1][0][0][1] + self.corners[self.index1][0][1][1] + \
+                self.corners[self.index1][0][2][1] + self.corners[self.index1][0][3][1]) / 4
             vAngleToMarker = abs(self.vDegreesPerPixel * (centerYMarker - self.frameHeight/2))
             realFocalLength = self.focalLength + (hAngleToMarker/30) * (self.focalLength30H - self.focalLength) + \
-                (vAngleToMarker/30) * (self.focalLength30V - self.focalLength) #if focalLength30H and V is 0 then realFocalLength = focalLength
-            self.widthOfMarker = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
-            self.distanceToMarker = (self.knownMarkerWidth * realFocalLength) / self.widthOfMarker 
+                (vAngleToMarker/30) * (self.focalLength30V - self.focalLength)
+            widthOfMarker = ((self.corners[self.index1][0][1][0] - self.corners[self.index1][0][0][0]) + \
+                (self.corners[self.index1][0][2][0] - self.corners[self.index1][0][3][0])) / 2
+            self.distanceToMarker = (self.knownMarkerWidth * realFocalLength) / widthOfMarker 
             
         else:
-            self.widthOfMarker1 = self.corners[index1][0][1][0] - self.corners[index1][0][0][0] 
-            self.widthOfMarker2 = self.corners[index2][0][1][0] - self.corners[index2][0][0][0] 
+            centerXMarker1 = (self.corners[self.index1][0][0][0] + self.corners[self.index1][0][1][0] + \
+                self.corners[self.index1][0][2][0] + self.corners[self.index1][0][3][0]) / 4
+            centerXMarker2 = (self.corners[self.index2][0][0][0] + self.corners[self.index2][0][1][0] + \
+                self.corners[self.index2][0][2][0] + self.corners[self.index2][0][3][0]) / 4
+            self.angleToMarker = self.degreesPerPixel * ((centerXMarker1 + centerXMarker2)/2 - self.frameWidth/2) 
+        
+            hAngleToMarker1 = abs(self.vDegreesPerPixel * (centerXMarker1 - self.frameWidth/2))
+            hAngleToMarker2 = abs(self.vDegreesPerPixel * (centerXMarker2 - self.frameWidth/2))
+            centerYMarker1 = (self.corners[self.index1][0][0][1] + self.corners[self.index1][0][1][1] + \
+                self.corners[self.index1][0][2][1] + self.corners[self.index1][0][3][1]) / 4
+            centerYMarker2 = (self.corners[self.index2][0][0][1] + self.corners[self.index2][0][1][1] + \
+                self.corners[self.index2][0][2][1] + self.corners[self.index2][0][3][1]) / 4
+            vAngleToMarker1 = abs(self.vDegreesPerPixel * (centerYMarker1 - self.frameHeight/2))
+            vAngleToMarker2 = abs(self.vDegreesPerPixel * (centerYMarker2 - self.frameHeight/2))
+            realFocalLength1 = self.focalLength + (hAngleToMarker1/30) * (self.focalLength30H - self.focalLength) + \
+                (vAngleToMarker1/30) * (self.focalLength30V - self.focalLength)
+            realFocalLength2 = self.focalLength + (hAngleToMarker2/30) * (self.focalLength30H - self.focalLength) + \
+                (vAngleToMarker2/30) * (self.focalLength30V - self.focalLength)     
+            widthOfMarker1 = ((self.corners[self.index1][0][1][0] - self.corners[self.index1][0][0][0]) + \
+                (self.corners[self.index1][0][2][0] - self.corners[self.index1][0][3][0])) / 2
+            widthOfMarker2 = ((self.corners[self.index2][0][1][0] - self.corners[self.index2][0][0][0]) + \
+                (self.corners[self.index1][0][2][0] - self.corners[self.index1][0][3][0])) / 2
 
             #distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
-            self.distanceToMarker1 = (self.knownMarkerWidth * focalLength1) / self.widthOfMarker1
-            self.distanceToMarker2 = (self.knownMarkerWidth * focalLength2) / self.widthOfMarker2
-            print(f"1: {self.distanceToMarker1} \n2: {self.distanceToMarker2}")
-            self.distanceToMarker = (self.distanceToMarker1 + self.distanceToMarker2) / 2
-        
-            self.centerXMarker = (self.corners[index1][0][1][0] + self.corners[index2][0][0][0]) / 2
-            #takes the pixels from the marker to the center of the image and multiplies it by the degrees per pixel
-            self.angleToMarker = self.degreesPerPixel * (self.centerXMarker - self.frameWidth/2) 
+            distanceToMarker1 = (self.knownMarkerWidth * realFocalLength1) / widthOfMarker1
+            distanceToMarker2 = (self.knownMarkerWidth * realFocalLength2) / widthOfMarker2
+            print(f"1: {distanceToMarker1}, 2: {distanceToMarker2}")
+            self.distanceToMarker = (distanceToMarker1 + distanceToMarker2) / 2
     
         return True 
-
-    #id1 is the marker you want to look for
-    #specify id2 if you want to look for a gate
-    #set write to true to write out images to disk
-    #cameras=number of cameras to check. -1 for all of them
+    '''
+    id1 is the marker you want to look for
+    specify id2 if you want to look for a gate
+    set write to true to write out images to disk
+    cameras=number of cameras to check. -1 for all of them
+    '''
     def findMarker(self, id1, id2=-1, cameras=-1):
         if cameras == -1:
             cameras=len(self.caps)
