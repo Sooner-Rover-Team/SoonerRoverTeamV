@@ -28,7 +28,7 @@ if not cam.isOpened():
     print("!!!!!CAMERA DID NOT OPEN!!!!!")
     sys.exit()
 
-# define counter (this counter determines the rate at which frames are collected, ie every 5 frames)
+# define counter (this counter determines the rate atree/RezaDriveMainPython/Autonomous/artags which frames are collected, ie every 5 frames)
 counter = 0
 
 # define the variable that counts number of frames collected (determines the iteration length of collection, ie stop at 200)
@@ -73,36 +73,35 @@ while True:
                 height, width = bwFrame.shape[0], bwFrame.shape[1]
 
                 if not (markerIDs is None): 
-                    match = False
+                    match = [False]*len(args.tagIDs)
                     for i in range(0, len(markerIDs)):  #going through detected markerIDs 
-                        for id in range(args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs
+                        for id in args.tagIDs:#range(args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs
                             if markerIDs[i][0] == id:
-                                match = True
-                            else:
-                                break
+                                match[i] = True
                         
-                        if (match):
-                            cv.imwrite(filename, frame)
-                            for tagIndex in range(0, len(markerIDs)):
-                                # X and Y coordinates: 
-                                # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
-                                # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
-                                # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
-                                xTag = ((corners[tagIndex][0][1][0] + corners[tagIndex][0][0][0] + corners[tagIndex][0][2][0] + corners[tagIndex][0][3][0]) / 4 ) / width
-                                yTag = ((corners[tagIndex][0][1][1] + corners[tagIndex][0][2][1]) / 2 ) / height
+                    if (all(match)):
+                        cv.imwrite(filename, frame)
+                        for tagIndex in range(0, len(markerIDs)):
+                            # X and Y coordinates: 
+                            # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
+                            # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
+                            # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
+                            xTag = ((corners[tagIndex][0][1][0] + corners[tagIndex][0][0][0] + corners[tagIndex][0][2][0] + corners[tagIndex][0][3][0]) / 4 ) / width
+                            yTag = ((corners[tagIndex][0][1][1] + corners[tagIndex][0][2][1]) / 2 ) / height
 
-                                # Width and Height of Tag: 
-                                # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
-                                # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
-                                widthOfTag = (((corners[tagIndex][0][1][0] - corners[tagIndex][0][0][0]) + (corners[tagIndex][0][2][0] - corners[tagIndex][0][3][0])) / 2)  / width
-                                heightOfTag = (corners[tagIndex][0][2][1] - corners[tagIndex][0][1][1]) / height
+                            # Width and Height of Tag: 
+                            # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
+                            # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
+                            widthOfTag = (((corners[tagIndex][0][1][0] - corners[tagIndex][0][0][0]) + (corners[tagIndex][0][2][0] - corners[tagIndex][0][3][0])) / 2)  / width
+                            heightOfTag = (corners[tagIndex][0][2][1] - corners[tagIndex][0][1][1]) / height
 
-                                # create .txt file with the same filename 
-                                # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                                txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
-                                # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
-                                txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
-                                txtfilename.close() 
+                            # create .txt file with the same filename 
+                            # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
+                            txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
+                            # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
+                            txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
+                            txtfilename.close() 
+                        break
 
                 # specified AR Tag is not found 
                 else: 
