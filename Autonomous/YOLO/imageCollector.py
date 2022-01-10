@@ -57,9 +57,6 @@ while True:
             # name filename based on timestamp and add it to specified filepath 
             filename = args.file + '/' + fileTime + '.jpg'
 
-            index1 = -1  # variables to determine if index has been documented 
-            index2 = -1
-
             # for loop to change the threshold values in increments of 60 
             for i in range(40, 221, 60): 
                 bwFrame = cv.threshold(frame, i, 255, cv.THRESH_BINARY)[1]
@@ -71,52 +68,41 @@ while True:
                 # tagDict: tag dictionary we previously set up 
                 (corners, markerIDs, rejected) = cv2.aruco.detectMarkers(bwFrame, tagDict)
                 print(markerIDs)
+                
                 # determining the height and width of the frame (NOT THE TAG) 
                 height, width = bwFrame.shape[0], bwFrame.shape[1]
-                
-                # if any markerIDs were detected in the frame 
-                # basically if markerIDs > 0 
-                if not (markerIDs is None) : 
-                    cv.imwrite(filename, frame)
-                    # markerIDs = markerIDs.flatten()
 
-                    if index1 != -1:  # break if tag has already been documented 
-                        break 
-
-                    if index2 != -1: 
-                        break 
-
+                if not (markerIDs is None): 
+                    match = False
                     for i in range(0, len(markerIDs)):  #going through detected markerIDs 
-                        for id in range (args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs 
-                            if markerIDs[i][0] == id:  
-                                if markerIDs[i][0] <= 7:  
+                        for id in range(args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs
+                            if markerIDs[i][0] == id:
+                                match = True
+                            else:
+                                break
+                        
+                        if (match):
+                            cv.imwrite(filename, frame)
+                            for tagIndex in range(0, len(markerIDs)):
+                                # X and Y coordinates: 
+                                # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
+                                # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
+                                # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
+                                xTag = ((corners[tagIndex][0][1][0] + corners[tagIndex][0][0][0] + corners[tagIndex][0][2][0] + corners[tagIndex][0][3][0]) / 4 ) / width
+                                yTag = ((corners[tagIndex][0][1][1] + corners[tagIndex][0][2][1]) / 2 ) / height
 
-                                    # if correct IDs are detected but haven't been documented for yet: 
-                                
-                                    # X and Y coordinates: 
-                                    # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
-                                    # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
-                                    # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
-                                    xTag = ((corners[i][0][1][0] + corners[i][0][0][0] + corners[i][0][2][0] + corners[i][0][3][0]) / 4 ) / width
-                                    yTag = ((corners[i][0][1][1] + corners[i][0][2][1]) / 2 ) / height
+                                # Width and Height of Tag: 
+                                # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
+                                # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
+                                widthOfTag = (((corners[tagIndex][0][1][0] - corners[tagIndex][0][0][0]) + (corners[tagIndex][0][2][0] - corners[tagIndex][0][3][0])) / 2)  / width
+                                heightOfTag = (corners[tagIndex][0][2][1] - corners[tagIndex][0][1][1]) / height
 
-                                    # Width and Height of Tag: 
-                                    # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
-                                    # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
-                                    widthOfTag = (((corners[i][0][1][0] - corners[i][0][0][0]) + (corners[i][0][2][0] - corners[i][0][3][0])) / 2)  / width
-                                    heightOfTag = (corners[i][0][2][1] - corners[i][0][1][1]) / height
-
-                                    if index1 == -1: 
-                                        index1 = i #reassigning 
-                                    if index1 != -1 and index2 == -1:
-                                        index2 = i 
-
-                                    # create .txt file with the same filename 
-                                    # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                                    txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
-                                    # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
-                                    txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
-                                    txtfilename.close() 
+                                # create .txt file with the same filename 
+                                # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
+                                txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
+                                # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
+                                txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
+                                txtfilename.close() 
 
                 # specified AR Tag is not found 
                 else: 
