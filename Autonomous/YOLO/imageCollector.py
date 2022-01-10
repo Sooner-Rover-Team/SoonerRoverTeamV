@@ -64,12 +64,6 @@ while True:
             for i in range(40, 221, 60): 
                 bwFrame = cv.threshold(frame, i, 255, cv.THRESH_BINARY)[1]
 
-                if index1 != -1:  # break if tag has already been documented 
-                    break 
-
-                if index2 != -1: 
-                    break 
-
                 # corners: x,y coordinates of our detected markers
                 # markerIDs: identifers of the marker (the ID encoded in the marker itself)
                 # rejected: potential markers detected but rejected bc code inside marker couldn't be parsed 
@@ -85,6 +79,12 @@ while True:
                 if not (markerIDs is None) : 
                     cv.imwrite(filename, frame)
                     # markerIDs = markerIDs.flatten()
+
+                    if index1 != -1:  # break if tag has already been documented 
+                        break 
+
+                    if index2 != -1: 
+                        break 
 
                     for i in range(0, len(markerIDs)):  #going through detected markerIDs 
                         for id in range (args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs 
@@ -108,9 +108,9 @@ while True:
 
                                     if index1 == -1: 
                                         index1 = i #reassigning 
-                                    if index1 != -1:
+                                    if index1 != -1 and index2 == -1:
                                         index2 = i 
-                                        
+
                                     # create .txt file with the same filename 
                                     # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
                                     txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
