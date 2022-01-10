@@ -4,6 +4,7 @@ import numpy as np
 import os
 import argparse
 import time
+import sys
 
 # Set the ar tag dictionary
 tagDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -11,27 +12,21 @@ tagDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 # creates and initializes the parser (allows custom arguments)
 parser = argparse.ArgumentParser(description='save images to file')
 
-# add the arguments
-# camera
 parser.add_argument('-cam', help='camera path', type=int, default=0)
-
-# filepath
 parser.add_argument('-file', help='File path where images will be stored', default='.')
-
-# set frame capture rate to every 5 frames
-parser.add_argument('-captureRate', help='frame capture rate specifies collection frequency', type=int, default='5')
-
-# set iteration to stop after 200 frames has been collected
+parser.add_argument('-captureRate', help='frame capture rate specifies collection frequency', type=int, default='10') # Changed default from 5 to 10
 parser.add_argument('-iterationLength', help='the duration of one iteration', type=int, default= 200)
+parser.add_argument('-arMode', help='arMode identifies the arTags in captured frames', action='count', default=0)
+parser.add_argument('-tagIDs', nargs='+', type=int, default=[0], help='Array of tag ids') 
 
-# arMode - user decides through command prompt if they want code to run through arMode 
-parser.add_argument('-arMode', help='arMode identifies the arTags in captured frames, argument is "run"', type=str, default='.')
-
-# Execute the parse_args() method (parse the argument) 
+# Parse the arguments
 args = parser.parse_args()
 
 # Creates camera object 
 cam = cv.VideoCapture(args.cam)
+if not cam.isOpened():
+    print("!!!!!CAMERA DID NOT OPEN!!!!!")
+    sys.exit()
 
 # define counter (this counter determines the rate at which frames are collected, ie every 5 frames)
 counter = 0
@@ -40,11 +35,10 @@ counter = 0
 numFramesCollected = 0
 
 while True:
-
+    fileTime = str(time.time_ns())
     # if the user specifies to run code through arMode 
-    if args.arMode == "run": 
-
-        # testing block 
+    if args.arMode: 
+        
         # reading from frame 
         ret, frame = cam.read() 
 
@@ -54,67 +48,80 @@ while True:
         # incrementing count 
         counter += 1 
 
-        # if count equals captureRate, save image  
+        # if count equals captureRate (ie every 10 images), save image  
         if counter == args.captureRate:  
 
             # converts image to grayscale 
             bwFrame = cv.cvtColor(frame, cv.COLOR_RGB2GRAY, frame) 
 
             # name filename based on timestamp and add it to specified filepath 
-            filename = args.file + '/' + str(time.time()) + '.jpg'
-            # assigning the converted grayscale image to the filename
-            cv.imwrite(filename, bwFrame)
+            filename = args.file + '/' + fileTime + '.jpg'
 
-            # Add note 
+            index1 = -1  # variables to determine if index has been documented 
+            index2 = -1
+
+            # for loop to change the threshold values in increments of 60 
             for i in range(40, 221, 60): 
                 bwFrame = cv.threshold(frame, i, 255, cv.THRESH_BINARY)[1]
+
+                if index1 != -1:  # break if tag has already been documented 
+                    break 
+
+                if index2 != -1: 
+                    break 
+
                 # corners: x,y coordinates of our detected markers
                 # markerIDs: identifers of the marker (the ID encoded in the marker itself)
                 # rejected: potential markers detected but rejected bc code inside marker couldn't be parsed 
                 # bwFrame: frame converted to grayscale 
                 # tagDict: tag dictionary we previously set up 
                 (corners, markerIDs, rejected) = cv2.aruco.detectMarkers(bwFrame, tagDict)
-
+                print(markerIDs)
                 # determining the height and width of the frame (NOT THE TAG) 
                 height, width = bwFrame.shape[0], bwFrame.shape[1]
-                # print("h" + str(h) + ", w" + str(w))       #debugging print
                 
                 # if any markerIDs were detected in the frame 
                 # basically if markerIDs > 0 
                 if not (markerIDs is None) : 
-                    
-                    # X and Y coordinates: 
-                    # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
-                    # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
-                    # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
-                    xTag = ((corners[0][0][1][0] + corners[0][0][0][0]) / 2 ) / width
-                    yTag = ((corners[0][0][1][1] + corners[0][0][2][1]) / 2 ) / height
+                    cv.imwrite(filename, frame)
+                    # markerIDs = markerIDs.flatten()
 
-                    # Width and Height of Tag: 
-                    # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
-                    # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
-                    widthOfTag = (corners[0][0][1][0] - corners[0][0][0][0]) / width
-                    heightOfTag = (corners[0][0][1][1] - corners[0][0][2][1]) / height
+                    for i in range(0, len(markerIDs)):  #going through detected markerIDs 
+                        for id in range (args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs 
+                            if markerIDs[i][0] == id:  
+                                if markerIDs[i][0] <= 7:  
 
-                    # converting centerXTag and centerYTag from numpy long to str (if not, will produce error)
-                    print("(" + str(xTag) + ", " + str(yTag) + ")")
+                                    # if correct IDs are detected but haven't been documented for yet: 
+                                
+                                    # X and Y coordinates: 
+                                    # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
+                                    # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
+                                    # Notes: Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
+                                    xTag = ((corners[i][0][1][0] + corners[i][0][0][0] + corners[i][0][2][0] + corners[i][0][3][0]) / 4 ) / width
+                                    yTag = ((corners[i][0][1][1] + corners[i][0][2][1]) / 2 ) / height
 
-                    # create .txt file with the same filename 
-                    # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                    txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w") 
-                    # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
-                    # we are writing in the txt file since there was an AR Tag found 
-                    txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag))
-                    txtfilename.close()
+                                    # Width and Height of Tag: 
+                                    # Notes: WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
+                                    # Notes: HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
+                                    widthOfTag = (((corners[i][0][1][0] - corners[i][0][0][0]) + (corners[i][0][2][0] - corners[i][0][3][0])) / 2)  / width
+                                    heightOfTag = (corners[i][0][2][1] - corners[i][0][1][1]) / height
 
-                # AR Tag is not found 
+                                    if index1 == -1: 
+                                        index1 = i #reassigning 
+                                    if index1 != -1:
+                                        index2 = i 
+                                        
+                                    # create .txt file with the same filename 
+                                    # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
+                                    txtfilename = open(args.file + '/' + fileTime + '.txt', "a") 
+                                    # write in the txt file: 0  X_CENTER_NORM  Y_CENTER_NORM  WIDTH_NORM  HEIGHT_NORM 
+                                    txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
+                                    txtfilename.close() 
+
+                # specified AR Tag is not found 
                 else: 
-                    # create .txt file with the same filename 
-                    # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-                    txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w")
-                    # file will be empty if AR Tag is not found 
-                    txtfilename.write("")
-                    txtfilename.close
+                    print("sucks to suck")
+                    # we don't want to have empty txt files 
 
             # increment the number of frames collected 
             numFramesCollected += 1
@@ -143,12 +150,12 @@ while True:
         if counter == args.captureRate:
 
             # name filename based on timestamp and add it to specified filepath 
-            filename = args.file + '/' + str(time.time()) + '.jpg'
+            filename = args.file + '/' + fileTime + '.jpg'
             cv.imwrite(filename, frame)
 
             # create .txt file with the same filename 
             # open("filename.txt", "w") -- accessmode "w" indicates python will write and create the new file 
-            txtfilename = open(args.file + '/' + str(time.time()) + '.txt', "w")
+            txtfilename = open(args.file + '/' + fileTime + '.txt', "w")
             # file will be empty if code is not run through arMode  
             txtfilename.write("")
             txtfilename.close
@@ -164,4 +171,4 @@ while True:
             break
 
 cam.release()
-cv.destroyAllWindow()
+cv.destroyAllWindows()
