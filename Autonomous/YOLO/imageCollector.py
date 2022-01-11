@@ -73,15 +73,16 @@ while True:
                 height, width = bwFrame.shape[0], bwFrame.shape[1]
 
                 if not (markerIDs is None): 
-                    match = [False]*len(args.tagIDs)
-                    for i in range(0, len(markerIDs)):  #going through detected markerIDs 
-                        for id in args.tagIDs:#range(args.tagIDs[0], len(args.tagIDs)):  #going through specified tag IDs
-                            if markerIDs[i][0] == id:
-                                match[i] = True
+                    match = [-1]*len(args.tagIDs)
+                    for i in range(0, len(args.tagIDs)): #going through specified tag IDs
+                        for j in range(0, len(markerIDs)):  #going through detected markerIDs 
+                            if markerIDs[j][0] == args.tagIDs[i]:
+                                match[i] = j
+                                break #assumes first marked tag with the correct id is the one we want
                         
-                    if (all(match)):
+                    if not -1 in match:
                         cv.imwrite(filename, frame)
-                        for tagIndex in range(0, len(markerIDs)):
+                        for tagIndex in match:
                             # X and Y coordinates: 
                             # determined by finding the midpoint of x and y (i.e. ((x1 + x2)/2)) and dividing by image width or height
                             # Notes: X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
@@ -102,11 +103,6 @@ while True:
                             txtfilename.write("0 " + str(xTag) + " " + str(yTag)  + " " + str(widthOfTag) + " " + str(heightOfTag) + "\n")
                             txtfilename.close() 
                         break
-
-                # specified AR Tag is not found 
-                else: 
-                    print("sucks to suck")
-                    # we don't want to have empty txt files 
 
             # increment the number of frames collected 
             numFramesCollected += 1
