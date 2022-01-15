@@ -3,17 +3,24 @@ import cv2.aruco as aruco
 import numpy as np
 import configparser
 import os
+import sys
+
+darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
+sys.path.append(darknetPath)
+from darknet_images import *
+from darknet import load_network
 
 
 class ARTracker:
 
     # Constructor
-    def __init__(self, cameras, write=False):
+    def __init__(self, cameras, write=False, useYOLO = False):
         self.write=write
         self.distanceToMarker = -1
         self.angleToMarker = -999.9
         self.index1 = -1
         self.index2 = -1
+        self.useYOLO = useYOLO
 
         #self.cameras = np.empty(3, dtype=str)
         self.cameras = cameras
@@ -31,6 +38,19 @@ class ARTracker:
         self.format = config['ARTRACKER']['FORMAT']
         self.frameWidth = int(config['ARTRACKER']['FRAME_WIDTH'])
         self.frameHeight = int(config['ARTRACKER']['FRAME_HEIGHT'])
+        
+        #sets up yolo
+        if useYOLO:
+            os.chdir(darknetPath)
+            weights = config['YOLO']['WEIGHTS']
+            cfg = config['YOLO']['CFG']
+            data = config['YOLO']['DATA']
+            self.thresh = float(config['YOLO']['THRESHOLD'])
+            self.network, self.class_names, self.class_colors = load_network(cfg, data, weights, 1)
+            os.chdir(os.path.dirname(os.path.abspath(__file__)))
+            
+            self.networkWidth = darknet.network_width(self.network)
+            self.networkHeight = darknet.network_height(self.network)
 
         # Initialize video writer, fps is set 
         if self.write:
@@ -48,6 +68,34 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
             self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
+    
+    #helper method to convert YOLO detections into the standard aruco corners format
+    def _convertToCorners(self,detections, numCorners):
+        corners = []
+        xCoef = self.frameWidth / self.networkWidth
+        yCoef = self.frameHeight / self.networkHeight
+        if len(detections) < numCorners:
+            print('ERROR, convertToCorners not used correctly')
+            raise ValueError
+        for i in range(0, numCorners):
+            tagData = list(detections[i][2]) #Gets the x, y, width, height
+            
+            #YOLO resizes the image so this sizes it back to what we're exepcting
+            tagData[0] *= xCoef
+            tagData[1]*= yCoef
+            tagData[2] *= xCoef
+            tagData[3] *= yCoef
+            
+            #Gets the corners
+            topLeft = [tagData[0] - tagData[2]/2, tagData[1] - tagData[3]/2]
+            topRight = [tagData[0] + tagData[2]/2, tagData[1] - tagData[3]/2]
+            bottomRight = [tagData[0] + tagData[2]/2, tagData[1] + tagData[3]/2]
+            bottomLeft = [tagData[0] - tagData[2]/2, tagData[1] + tagData[3]/2]
+        
+            #appends the corners with the same format as aruco
+            corners.append([[topLeft, topRight, bottomRight, bottomLeft]])
+        
+        return corners
     
     #id1 is the main ar tag to track, id2 is if you're looking at a gatepost, image is the image to analyze
     def markerFound(self, id1, image, id2=-1):
@@ -100,13 +148,35 @@ class ARTracker:
                             cv2.waitKey(1)
                         break                        
                      
-            if i == 220:  #did not find any AR markers with any b&w cutoff
-                if self.write:
-                    self.videoWriter.write(image) 
-                    cv2.waitKey(1)
-                self.distanceToMarker = -1 
-                self.angleToMarker = -999 
-                return False 
+            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco
+                if self.useYOLO:
+                    detections = []
+                    if not self.write:
+                        #this is a simpler detection function that doesn't return the image
+                        detections = simple_detection(image, self.network, self.class_names, self.thresh)
+                    else:
+                        #more complex detection that returns the image to be written
+                        image, detections = complex_detection(image, self.network, self.class_names, self.class_colors, self.thresh)
+                    #cv2.imwrite('ar.jpg', image)
+                    for d in detections:
+                        print(d)
+                        
+                    if id2 == -1 and len(detections) > 0:
+                        self.corners = self._convertToCorners(detections, 1)
+                        self.index1 = 0 #Takes the highest confidence ar tag
+                    elif len(detections) > 1:
+                        self.corners = self._convertToCorners(detections, 2)
+                        self.index1 = 0 #takes the two highest confidence ar tags
+                        self.index2 = 1
+                    print(self.corners)    
+                if self.index1 == -1 or (self.index2 == -1 and id2 != -1): #Not even YOLO saw anything
+                    if self.write:
+                        self.videoWriter.write(image) 
+                        cv2.imshow('window', image)
+                        cv2.waitKey(1)
+                    self.distanceToMarker = -1 
+                    self.angleToMarker = -999 
+                    return False 
         
         if id2 == -1:
             centerXMarker = (self.corners[self.index1][0][0][0] + self.corners[self.index1][0][1][0] + \
