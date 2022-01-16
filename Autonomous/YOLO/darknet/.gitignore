@@ -12,7 +12,6 @@ yolov4.conv.137
 *.dylib
 *.pyc
 mnist/
-data/
 caffe/
 grasp/
 images/
@@ -20,7 +19,6 @@ opencv/
 convnet/
 decaf/
 submission/
-cfg/
 temp/
 build/darknet/*
 build_*/
