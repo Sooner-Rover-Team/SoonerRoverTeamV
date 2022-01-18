@@ -13,9 +13,10 @@ tagDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 parser = argparse.ArgumentParser(description='save images to file')
 
 parser.add_argument('-cam', help='camera path', type=int, default=0)
+parser.add_argument('-skip', help='initial frames to skip', type=int, default = 0)
 parser.add_argument('-file', help='File path where images will be stored', default='.')
-parser.add_argument('-captureRate', help='frame capture rate specifies collection frequency', type=int, default='10') # Changed default from 5 to 10
-parser.add_argument('-iterationLength', help='the duration of one iteration', type=int, default= 200)
+parser.add_argument('-captureRate', help='frame capture rate specifies collection frequency', type=int, default='10')
+parser.add_argument('-iterations', help='the duration of one iteration', type=int, default= 200)
 parser.add_argument('-arMode', help='arMode identifies the arTags in captured frames', action='count', default=0)
 parser.add_argument('-tagIDs', nargs='+', type=int, default=[0], help='Array of tag ids') 
 
@@ -33,7 +34,7 @@ counter = 0
 
 # define the variable that counts number of frames collected (determines the iteration length of collection, ie stop at 200)
 numFramesCollected = 0
-
+init = 0
 while True:
     fileTime = str(time.time_ns())
     # if the user specifies to run code through arMode 
@@ -47,9 +48,10 @@ while True:
 
         # incrementing count 
         counter += 1 
+        init += 1
 
-        # if count equals captureRate (ie every 10 images), save image  
-        if counter == args.captureRate:  
+        # if count equals captureRate (e.g., every 10 images), save image  
+        if counter >= args.captureRate and init > args.skip: #  
 
             # converts image to grayscale 
             bwFrame = cv.cvtColor(frame, cv.COLOR_RGB2GRAY, frame) 
@@ -110,12 +112,6 @@ while True:
             #reset counter
             counter = 0
 
-        # quit if user presses 'q' or when 200 frames has been collected 
-        if cv.waitKey(1) == ord('q') or numFramesCollected == args.iterationLength:
-            break
-
-
-
     # if the user chooses not to run code through arMode 
     else: 
         # reading from frame
@@ -126,6 +122,7 @@ while True:
 
         # incrementing count 
         counter += 1
+        init += 1
 
         # if count equals captureRate, save image 
         if counter == args.captureRate:
@@ -147,9 +144,9 @@ while True:
             #reset counter
             counter = 0
 
-        # quit if user presses 'q' or when 200 frames has been collected 
-        if cv.waitKey(1) == ord('q') or numFramesCollected == args.iterationLength:
-            break
+    # quit if user presses 'q' or when numFramesCollected frames has been collected 
+    if cv.waitKey(1) == ord('q') or numFramesCollected == args.iterations:
+        break
 
 cam.release()
 cv.destroyAllWindows()

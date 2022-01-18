@@ -1,5 +1,5 @@
 target
-train/
+filesAnalyzer.py
 .venv
 CMakeCache.txt
 cmake_install.cmake
@@ -17,4 +17,4 @@ gps.py
 gpsmain.py
 sbp.py
 .vscode
-autonomous.avi
+*.avi
