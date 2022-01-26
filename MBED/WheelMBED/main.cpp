@@ -28,17 +28,26 @@ int main() {
         }
         
         float motor_speed = 0.0;
+        bool negative_speed = false;
         for (size_t i = 0; i < 6; i++) {
             char speed = c_msg.data[i];
+            if (speed == '-') {
+                negative_speed = true;
+                continue;
+            }
             speed = speed - '0';
             motor_speed += speed * pow(10.0, (double) 5 - i);
         }
         
-        if (motor.read() != motor_speed / 180.0f) {
-            motor.write(motor_speed / 180.0f);
+        if (negative_speed) {
+            motor_speed *= -1.0f;
         }
         
-        can.reset();
+        motor_speed += 126.0f;
+        if (motor.read() != motor_speed / 252.0f) {
+            motor.write(motor_speed / 252.0f);
+        }
+        
         wait(.1);
         led = 0;
     }
