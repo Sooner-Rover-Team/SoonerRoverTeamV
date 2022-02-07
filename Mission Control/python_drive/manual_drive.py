@@ -1,4 +1,3 @@
-from time import sleep
 import pygame
 import socket
 import configparser
@@ -15,7 +14,7 @@ for joystick in joysticks:
 
 timer = Clock()
 THRESHOLD = 0.08
-FPS = 10
+FPS = 20
 config = configparser.ConfigParser()
 config.read('config.ini')
 HOST = config['DEFAULT']['HOST']
@@ -31,11 +30,20 @@ s.connect((HOST,PORT))
 def fix(number):
     return floor(number) if number % 1 <= .5 else ceil(number)
 
-def axistospeed(wheelspeed):
-    return fix((-wheelspeed * 126) + 126)
+def axistospeed(axispos):
+    return fix((-axispos * 126) + 126)
+
+def make_message(leftwheels, rightwheels):
+    msg =  bytearray([0x23, 0x00, 
+                    leftwheels[0], leftwheels[1], leftwheels[2], 
+                    rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
+    msg[8] = sum(msg[2:8]) & 0xff
+    return msg
 
 if __name__ == "__main__":
     running = True
+    leftwheels = [127] * 3
+    rightwheels = [127] * 3
     while(running):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -50,17 +58,26 @@ if __name__ == "__main__":
             L_Y = joystick.get_axis(1)
             R_X = joystick.get_axis(2)
             R_Y = joystick.get_axis(3)
+            # print('fixed',axistospeed(L_Y))
             if abs(L_Y) > THRESHOLD:
-                print('L_Y',L_Y)
-                print('fixed',axistospeed(L_Y))
+                leftwheels = [axistospeed(L_Y)] * 3
+                print('leftwheels',leftwheels)
+                # print('L_Y',L_Y)
             if abs(L_X) > THRESHOLD:
-                print('L_X',L_X)
+                # print('L_X',L_X)
+                pass
             if abs(R_Y) > THRESHOLD:
-                print('R_Y',R_Y)
+                rightwheels = [axistospeed(R_Y)] * 3
+                print('rightwheels',rightwheels)
+                # print('R_Y',R_Y)
             if abs(R_X) > THRESHOLD:
-                print('R_X',R_X)
+                # print('R_X',R_X)
+                pass
 
-        # s.sendall(data)
+
+        data = make_message(leftwheels, rightwheels)
+        # print(data)
+        s.sendall(data)
 
         timer.tick(FPS)
 
