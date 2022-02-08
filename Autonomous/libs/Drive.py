@@ -150,7 +150,7 @@ class Drive:
         return False
                 
     def trackARMarker(self, id1, id2=-1):
-        stopDistance = 250 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
+        stopDistance = 50 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
         timesNotFound = -1
         self.tracker.findMarker(id1, id2, cameras=1) #Gets and initial angle from the main camera
         self.errorAccumulation = 0
@@ -211,6 +211,7 @@ class Drive:
             #We scored!
             self.leftSpeed = 0
             self.rightSpeed = 0
+            print("In range of the tag!")
             return True
         else:
             #Look for the center of the posts

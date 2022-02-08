@@ -28,4 +28,4 @@ if __name__ == "__main__":
     del sys.argv[0]
     rover = Drive.Drive(40, sys.argv)
 
-    drive(rover, 1)
+    drive(rover, 5)
