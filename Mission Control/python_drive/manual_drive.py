@@ -14,9 +14,13 @@ for joystick in joysticks:
     print('Found',joystick.get_name())
 
 def find_config():
-    current_folder = os.getcwd().split('/')[-1]
+    current_folder = os.path.dirname(__file__)
+    os.chdir(os.path.curdir)
+    print(os.getcwd())
+    print('cf',current_folder)
     if current_folder == 'SoonerRoverTeamV':
-        os.chdir(os.getcwd() + '/Mission Control/python_drive/')
+        os.chdir(os.path.join(os.getcwd(), 'Mission Control', 'python_drive'))
+        print(os.getcwd())
 
 find_config()
 
@@ -62,6 +66,10 @@ def make_message(leftwheels, rightwheels):
     msg[8] = sum(msg[2:8]) & 0xff
     return msg
 
+def toggle_wheels():
+    msg = bytearray([0x23,0x01])
+    return msg
+
 def isstopped(leftwheels,rightwheels):
     for s in leftwheels:
         if s != 126:
@@ -74,14 +82,18 @@ def isstopped(leftwheels,rightwheels):
 if __name__ == "__main__":
     running = True
     stopsent = False
-    leftwheels = [127] * 3
-    rightwheels = [127] * 3
+    leftwheels = [126] * 3
+    rightwheels = [126] * 3
     while(running):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 kp = pygame.key.get_pressed()
                 if kp[pygame.K_ESCAPE]:
                     running = False
+            if event.type == pygame.JOYBUTTONDOWN and event.button == 0:
+                print('wheel toggle')
+                msg = toggle_wheels()
+                s.sendall(msg)
 
         for joystick in joysticks:
             if joystick.get_button(6) and joystick.get_button(7):
@@ -95,24 +107,20 @@ if __name__ == "__main__":
                 leftwheels = [axistospeed(L_Y)] * 3
             else:
                 leftwheels = [126] * 3
-            # print('leftwheels',leftwheels)
-                # print('L_Y',L_Y)
             if abs(L_X) > THRESHOLD:
-                # print('L_X',L_X)
+                # left stick x value, unused for rn
                 pass
             if abs(R_Y) > THRESHOLD:
-                rightwheels = [axistospeed(R_Y)] * 3
+                # wheel #4 is the only one that needed to be reversed somehow
+                rightwheels = [axistospeed(R_Y), 252-axistospeed(R_Y), axistospeed(R_Y)]
             else:
                 rightwheels = [126] * 3
-            # print('rightwheels',rightwheels)
-                # print('R_Y',R_Y)
             if abs(R_X) > THRESHOLD:
-                # print('R_X',R_X)
+                # right stick x value, unused for rn
                 pass
 
-
         data = make_message(leftwheels, rightwheels)
-        # print(data)
+
         if (isstopped(leftwheels,rightwheels)):
             if not stopsent:
                 print('sent',data[2:8])
