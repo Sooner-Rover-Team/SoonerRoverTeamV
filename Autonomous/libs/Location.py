@@ -101,7 +101,7 @@ class Location:
         lon1 = radians(self.longitude)  # Current long point converted to radians
 
         lat2 = asin(sin(lat1)*cos(d/R) + 
-                    cos(lat1)-sin(lat1)*cos(brng))
+                    cos(lat1)*sin(d/R)*cos(brng))
         lon2 = lon1 + atan2(sin(brng)*sin(d/R)*cos(lat1),
                             cos(d/R)-sin(lat1)*sin(lat2))
 
