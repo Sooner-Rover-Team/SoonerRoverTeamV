@@ -38,8 +38,8 @@ class Drive:
     #Every 100ms, send the current left and right wheel speeds to the mbeds
     def sendSpeed(self):
         while self.running:
-            ls = int(self.leftSpeed) + 90 #TODO: verify we want to send values 0-180 instead of -90 to 90
-            rs = int(self.rightSpeed) + 90
+            ls = int(self.leftSpeed)
+            rs = int(self.rightSpeed)
             UDPOut.sendWheelSpeeds(self.mbedIP, self.mbedPort, ls,ls,ls, rs,rs,rs)
             sleep(.1)
     
