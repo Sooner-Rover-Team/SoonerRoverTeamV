@@ -63,7 +63,7 @@ class Drive:
 
         #Gets the adjusted speed values
         values[0] = speed - (error * kp + self.errorAccumulation * ki)
-        values[1] = speed + (error * kp - self.errorAccumulation * ki)
+        values[1] = speed + (error * kp + self.errorAccumulation * ki)
 
         #Gets the maximum speed values depending if it is pivoting or not
         min = speed  - 30
