@@ -37,20 +37,16 @@ class Drive:
     #Every 100ms, send the current left and right wheel speeds to the mbeds
     def sendSpeed(self):
         while self.running:
-            ls = int(self.speeds[1])
-            rs = int(self.speeds[0])
+            ls = int(self.speeds[0])
+            rs = int(self.speeds[1])
             UDPOut.sendWheelSpeeds(self.mbedIP, self.mbedPort, ls,ls,ls, rs,rs,rs)
             sleep(.1)
     
     #time in milliseconds
     #error in degrees
     #Gets adjusted speeds based off of error and how long its been off (uses p and i)   
-    def getSpeeds(self,speed, error, time):
+    def getSpeeds(self,speed, error, time, kp = .35, ki=.00001):
         values = [0,0]
-
-        #p and i constants if not doing a pivot turn
-        kp = .35
-        ki = .00001
 
         #p and i constants if doing a pivot turn
         if speed == 0:
@@ -61,8 +57,8 @@ class Drive:
         self.errorAccumulation += error * time
 
         #Gets the adjusted speed values
-        values[0] = speed - (error * kp + self.errorAccumulation * ki)
-        values[1] = speed + (error * kp + self.errorAccumulation * ki)
+        values[0] = speed + (error * kp + self.errorAccumulation * ki)
+        values[1] = speed - (error * kp + self.errorAccumulation * ki)
 
         #Gets the maximum speed values depending if it is pivoting or not
         min = speed  - 30
@@ -100,8 +96,8 @@ class Drive:
         
     #Cleaner way to print out the wheel speeds
     def printSpeeds(self):
-        print("Left wheels: ", round(self.speeds[1],1))
-        print("Right wheels: ", round(self.speeds[0],1))
+        print("Left wheels: ", round(self.speeds[0],1))
+        print("Right wheels: ", round(self.speeds[1],1))
     
     #Drives along a given list of GPS coordinates while looking for the given ar markers
     #Keep id2 at -1 if looking for one post, set id1 to -1 if you aren't looking for AR markers 
@@ -115,25 +111,17 @@ class Drive:
         
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading
         if(id1 > -1):
-            self.speeds = (-60,-60)
-            #self.leftSpeed = -60
-            #self.rightSpeed = -60
+            self.speeds = [-60,-60]
             self.printSpeeds()
             sleep(2)
-            self.speeds = (0,0)
-            #self.leftSpeed = 0
-            #self.rightSpeed = 0
+            self.speeds = [0,0]
             self.printSpeeds()
             sleep(2)
-            self.speeds = (80,20)
-            #self.leftSpeed = 80
-            #self.rightSpeed = 20
+            self.speeds = [80,20]
             self.printSpeeds()
             sleep(4)
         else:
             self.speeds = (self.baseSpeed, self.baseSpeed)
-            #self.leftSpeed = self.baseSpeed
-            #self.rightSpeed = self.baseSpeed
             self.printSpeeds()
             sleep(3)
 
@@ -144,8 +132,6 @@ class Drive:
                 bearingTo = self.gps.bearing_to(l[0], l[1])
                 print(self.gps.distance_to(l[0], l[1]) )
                 self.speeds = self.getSpeeds(self.baseSpeed, bearingTo, 100) #It will sleep for 100ms
-                #self.leftSpeed = speeds[1]
-                #self.rightSpeed = speeds[0]
                 sleep(.1) #Sleeps for 100ms
                 self.printSpeeds()
                 
@@ -153,15 +139,11 @@ class Drive:
                     self.gps.stop_GPS_thread()
                     print('Found Marker!')
                     self.speeds = [0,0]
-                    #self.leftSpeed = 0
-                    #self.rightSpeed = 0
                     return True
                     
         self.gps.stop_GPS_thread()
         print('Made it to location without seeing marker(s)')
-        self.speeds = (0,0)
-        #self.leftSpeed = 0
-        #self.rightSpeed = 0
+        self.speeds = [0,0]
         return False
                 
     def trackARMarker(self, id1, id2=-1):
@@ -175,14 +157,10 @@ class Drive:
             while self.tracker.angleToMarker > 20 or self.tracker.angleToMarker < -18:
                 if self.tracker.findMarker(id1, cameras=1): #Only looking with the center camera right now
                     self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
-                    #self.leftSpeed = speeds[1]
-                    #self.rightSpeed = speeds[0]
                     print(self.tracker.angleToMarker, " ", self.tracker.distanceToMarker)
                     timesNotFound = 0
                 elif timesNotFound == -1: #Never seen the tag with the main camera
-                    self.speeds = (15,15)
-                    #self.leftSpeed = 10
-                    #self.rightSpeed = 80
+                    self.speeds = [15,15]
                 elif timesNotFound < 15: #Lost the tag for less than a second after seeing it with the main camera
                     timesNotFound += 1
                     print(f"lost tag {timesNotFound} times")
@@ -196,8 +174,6 @@ class Drive:
                 sleep(.1)
             
             self.speeds = [0,0]
-            #self.leftSpeed = 0
-            #self.rightSpeed = 0
             sleep(.5)
             self.errorAccumulation = 0
             print("Locked on and ready to track")
@@ -207,9 +183,7 @@ class Drive:
                 markerFound = self.tracker.findMarker(id1, cameras = 1) #Looks for the tag
                 
                 if self.tracker.distanceToMarker > stopDistance:
-                    self.speeds = self.getSpeeds(self.baseSpeed, self.tracker.angleToMarker, 100)
-                    #self.leftSpeed = speeds[1]
-                    #self.rightSpeed = speeds[0]
+                    self.speeds = self.getSpeeds(self.baseSpeed, self.tracker.angleToMarker, 100, kp = .5, ki = .0001)
                     timesNotFound = 0
                     print(f"Tag is {self.tracker.distanceToMarker}cm away at {self.tracker.angleToMarker} degrees")
                     
@@ -219,8 +193,6 @@ class Drive:
                     
                 elif self.tracker.distanceToMarker == -1:
                     self.speeds = [0,0]
-                    #self.leftSpeed = 0
-                    #self.rightSpeed = 0
                     print("Lost tag")
                     return False #TODO this is bad
                 
@@ -229,8 +201,6 @@ class Drive:
             
             #We scored!
             self.speeds = [0,0]
-            #self.leftSpeed = 0
-            #self.rightSpeed = 0
             print("In range of the tag!")
             return True
         else:
