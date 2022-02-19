@@ -19,19 +19,24 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
     
     #Add the speeds to the message, while simultaneously summing them for the verification bit
     speeds = [fl,ml,rl,fr,mr,rr]
-    # print(speeds)
-    speeds = [int((x/90)+1)*126 for x in speeds]
-    speeds[4] = 252-speeds[4]
-    # print(speeds)
+    #print(speeds)
+    speed_fix = []
+    for i in speeds:
+        x = (i/90.0 + 1) * 126
+        speed_fix.append(int(x))
+
+    #print(speed_fix)
+    
+    speed_fix[4] = 252-speed_fix[4]
     cs = 0
     for i in range(6):
-        msg[i + 2] = speeds[i]
-        cs += speeds[i]
+        msg[i + 2] = speed_fix[i]
+        cs += speed_fix[i]
 
         #add verification bit
-        msg[8] = int(bin(cs)[2:10], 2) #capped at 8 binary characters of length
+        msg[8] = cs&0xff #capped at 8 binary characters of length
 
-    # print(msg)
+    #print(msg)
     #send wheel speeds
     sendUDP(HOST,PORT,msg)
 

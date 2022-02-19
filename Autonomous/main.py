@@ -11,8 +11,8 @@ def drive(rover, id1, id2=-1):
     locations = []
     
     while True:
-        lat = int(input("Lat: "))
-        lon = int(input("Lon: "))
+        lat = float(input("Lat: "))
+        lon = float(input("Lon: "))
         
         if lat == -1 and lon == -1:
             break
@@ -26,6 +26,6 @@ def drive(rover, id1, id2=-1):
 
 if __name__ == "__main__":
     del sys.argv[0]
-    rover = Drive.Drive(40, sys.argv)
+    rover = Drive.Drive(50, sys.argv)
 
-    drive(rover, 5)
+    drive(rover, 3)
