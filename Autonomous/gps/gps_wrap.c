@@ -2702,6 +2702,9 @@ static swig_module_info swig_module = {swig_types, 12, 0, 0, 0, 0};
     extern void close_socket();
     extern double get_longitude();
     extern double get_latitude();
+    extern double get_height();
+    extern double get_time();
+    extern double get_error();
     extern u32 socket_read(u8 *buff, u32 n, void *context);
     extern void *gps_thread();
     extern void sbp_pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context);
@@ -2959,6 +2962,45 @@ SWIGINTERN PyObject *_wrap_get_latitude(PyObject *SWIGUNUSEDPARM(self), PyObject
   
   if (!SWIG_Python_UnpackTuple(args, "get_latitude", 0, 0, 0)) SWIG_fail;
   result = (double)get_latitude();
+  resultobj = SWIG_From_double((double)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_get_height(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  double result;
+  
+  if (!SWIG_Python_UnpackTuple(args, "get_height", 0, 0, 0)) SWIG_fail;
+  result = (double)get_height();
+  resultobj = SWIG_From_double((double)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_get_time(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  double result;
+  
+  if (!SWIG_Python_UnpackTuple(args, "get_time", 0, 0, 0)) SWIG_fail;
+  result = (double)get_time();
+  resultobj = SWIG_From_double((double)(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_get_error(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  double result;
+  
+  if (!SWIG_Python_UnpackTuple(args, "get_error", 0, 0, 0)) SWIG_fail;
+  result = (double)get_error();
   resultobj = SWIG_From_double((double)(result));
   return resultobj;
 fail:
@@ -3521,6 +3563,9 @@ static PyMethodDef SwigMethods[] = {
 	 { "close_socket", _wrap_close_socket, METH_NOARGS, NULL},
 	 { "get_longitude", _wrap_get_longitude, METH_NOARGS, NULL},
 	 { "get_latitude", _wrap_get_latitude, METH_NOARGS, NULL},
+	 { "get_height", _wrap_get_height, METH_NOARGS, NULL},
+	 { "get_time", _wrap_get_time, METH_NOARGS, NULL},
+	 { "get_error", _wrap_get_error, METH_NOARGS, NULL},
 	 { "socket_read", _wrap_socket_read, METH_VARARGS, NULL},
 	 { "gps_thread", _wrap_gps_thread, METH_NOARGS, NULL},
 	 { "sbp_pos_llh_callback", _wrap_sbp_pos_llh_callback, METH_VARARGS, NULL},
