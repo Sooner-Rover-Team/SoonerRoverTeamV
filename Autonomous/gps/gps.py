@@ -80,6 +80,15 @@ def get_longitude():
 def get_latitude():
     return _gps.get_latitude()
 
+def get_height():
+    return _gps.get_height()
+
+def get_time():
+    return _gps.get_time()
+
+def get_error():
+    return _gps.get_error()
+
 def socket_read(buff, n, context):
     return _gps.socket_read(buff, n, context)
 

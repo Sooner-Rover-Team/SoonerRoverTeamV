@@ -73,4 +73,4 @@ gcc -shared main.o main_wrap.o -o _gpsmain.so gps.o sbp.o edc.o
 - [x] Get it all to at least build correctly
 - [x] Figure out how to wrap the gps code and turn it into a python module
 - [x] See if that module can be imported into another python script and the correct information from the Swift can be accesssed
-- [ ] See if it will actually communicate with the Swift
+- [x] See if it will actually communicate with the Swift

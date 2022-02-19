@@ -18,3 +18,7 @@ gpsmain.py
 sbp.py
 .vscode
 *.avi
+mbed
+mbed-os
+mcp2515
+Servo

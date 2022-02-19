@@ -40,7 +40,7 @@ class Location:
     # Calculates difference between given bearing to location and current bearing
     # Positive is turn right, negative is turn left
     def bearing_to(self, lat:float, lon:float):
-        resultbearing = self.calc_bearing(self.latitude, self.longitude, lat, lon)
+        resultbearing = self.calc_bearing(self.latitude, self.longitude, lat, lon) - self.bearing
         return resultbearing + 360 if resultbearing < -180 else (resultbearing - 360 if resultbearing > 180 else resultbearing)
 
     # Starts updating fields from the GPS box
