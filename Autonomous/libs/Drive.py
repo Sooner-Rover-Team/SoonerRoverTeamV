@@ -117,12 +117,15 @@ class Drive:
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading
         self.leftSpeed = -60
         self.rightSpeed = -60
+        self.printSpeeds()
         sleep(2)
         self.leftSpeed = 0
         self.rightspeed = 0
+        self.printSpeeds()
         sleep(2)
         self.leftSpeed = 80
         self.rightSpeed = 20
+        self.printSpeeds()
         sleep(4)
         
         #navigates to each location
