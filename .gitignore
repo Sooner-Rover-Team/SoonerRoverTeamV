@@ -1,4 +1,5 @@
 target
+filesAnalyzer.py
 .venv
 CMakeCache.txt
 cmake_install.cmake
@@ -11,13 +12,15 @@ pyvenv.cfg
 *.so
 *.o
 *_wrap.c
+*.swp
 edc.py
 gps.py
 gpsmain.py
 sbp.py
 .vscode
-autonomous.avi
+*.avi
 mbed
 mbed-os
 mcp2515
 Servo
+__pycache__

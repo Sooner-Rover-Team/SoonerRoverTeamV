@@ -1,6 +1,7 @@
 from threading import Thread
 import configparser
 import os
+import math
 from time import sleep
 
 from libs import UDPOut
@@ -105,8 +106,8 @@ class Drive:
         #Starts the GPS
         self.gps.start_GPS_thread()
         print('Waiting for GPS connection...')
-        while self.gps.all_zero: 
-            continue
+        #while self.gps.all_zero: 
+        #    continue
         print('Connected to GPS')
         
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading
@@ -128,7 +129,7 @@ class Drive:
         #navigates to each location
         for l in locations:
             self.errorAccumulation = 0
-            while self.gps.distance_to(l[0], l[1]) > .003: #.002km
+            while self.gps.distance_to(l[0], l[1]) > .0029: #.002km
                 bearingTo = self.gps.bearing_to(l[0], l[1])
                 print(self.gps.distance_to(l[0], l[1]) )
                 self.speeds = self.getSpeeds(self.baseSpeed, bearingTo, 100) #It will sleep for 100ms
@@ -147,34 +148,37 @@ class Drive:
         return False
                 
     def trackARMarker(self, id1, id2=-1):
-        stopDistance = 50 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
+        stopDistance = 250 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
         timesNotFound = -1
         self.tracker.findMarker(id1, id2, cameras=1) #Gets and initial angle from the main camera
         self.errorAccumulation = 0
-        
-        if id2 == -1:
-            #Centers the middle camera with the tag
-            while self.tracker.angleToMarker > 20 or self.tracker.angleToMarker < -18:
-                if self.tracker.findMarker(id1, cameras=1): #Only looking with the center camera right now
-                    self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
-                    print(self.tracker.angleToMarker, " ", self.tracker.distanceToMarker)
-                    timesNotFound = 0
-                elif timesNotFound == -1: #Never seen the tag with the main camera
-                    self.speeds = [15,15]
-                elif timesNotFound < 15: #Lost the tag for less than a second after seeing it with the main camera
-                    timesNotFound += 1
-                    print(f"lost tag {timesNotFound} times")
+           
+        count = 0
+        #Centers the middle camera with the tag
+        while self.tracker.angleToMarker > 20 or self.tracker.angleToMarker < -18:
+            if self.tracker.findMarker(id1, id2, cameras=1): #Only looking with the center camera right now
+                self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
+                print(self.tracker.angleToMarker, " ", self.tracker.distanceToMarker)
+                timesNotFound = 0
+            elif timesNotFound == -1: #Never seen the tag with the main camera
+                if(math.ceil(int(count/10)/5) % 2 == 1):
+                    self.speeds = [20,-20]
                 else:
-                    self.speeds = (0,0)
-                    #self.leftSpeed = 0
-                    #self.rightSpeed = 0
-                    print("lost it") #TODO this is bad
-                    return False
-                self.printSpeeds()
-                sleep(.1)
+                    self.speeds = [-20,20]
+            elif timesNotFound < 15: #Lost the tag for less than 1.5 seconds after seeing it with the main camera
+                timesNotFound += 1
+                print(f"lost tag {timesNotFound} times")
+            else:
+                self.speeds = [0,0]
+                print("lost it") #TODO this is bad
+                return False
+            self.printSpeeds()
+            sleep(.1)
+            count+=1
+        self.speeds = [0,0]
+        sleep(.5)
             
-            self.speeds = [0,0]
-            sleep(.5)
+        if id2 == -1:            
             self.errorAccumulation = 0
             print("Locked on and ready to track")
             
@@ -204,11 +208,28 @@ class Drive:
             print("In range of the tag!")
             return True
         else:
-            #Look for the center of the posts
-            #Get the angle and the distance from the rover
-            #backup a few seconds and then drive forward the same distance and save the calculated bearing from that
-            #Create a new method in location that returns the lat/lon given an angle and a distance
-            #drive to the lat/lon taken from the previous line
+            #Gets the coords to the point that is 4m infront of the gate posts (get_coordinates expects distance in km)
+            coords = self.gps.get_coordinates(self.tracker.distanceToMarker/100000.0+.004, self.tracker.angleToMarker)
+            
+            #Rover hasn't been moving for a bit so moves to get correct bearing
+            self.speeds = [-self.baseSpeed, -self.baseSpeed]
+            self.printSpeeds()
+            sleep(2)
+            self.speeds = [0,0]
+            self.printSpeeds()
+            sleep(1)
+            self.speeds = [self.baseSpeed, self.baseSpeed]
+            self.printSpeeds()
+            sleep(2)
+            
+            #Drives to the calculated location
+            while self.gps.distance_to(coords[0], coords[1]) > .003: #TODO: might want to adjust distance here...
+                bearingTo = self.gps.bearing_to(coords[0], coords[1])
+                print(self.gps.distance_to(coords[0], coords[1]) )
+                self.speeds = self.getSpeeds(self.baseSpeed, bearingTo, 100) #It will sleep for 100ms
+                sleep(.1) #Sleeps for 100ms
+                self.printSpeeds()
+            
             pass
         
                         
