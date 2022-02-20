@@ -91,10 +91,10 @@ class Location:
         return (180.0/pi) * atan2(x,y)
 
     # Calculate latitutde and longitude given distance (in km) and bearing (in degrees)
-    def distance_to_given_bearing(self, distance:float, bearing:float):
+    def get_coordinates(self, distance:float, bearing:float):
         # https://stackoverflow.com/questions/7222382/get-lat-long-given-current-point-distance-and-bearing
         R = 6371.301
-        brng = radians(bearing)      # Assuming bearing is in radians
+        brng = radians(bearing)      # Assuming bearing is in degrees
         d = distance
 
         lat1 = radians(self.latitude)   # Current lat point converted to radians
