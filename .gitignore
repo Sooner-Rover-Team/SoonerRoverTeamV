@@ -12,6 +12,7 @@ pyvenv.cfg
 *.so
 *.o
 *_wrap.c
+*.swp
 edc.py
 gps.py
 gpsmain.py
@@ -22,3 +23,4 @@ mbed
 mbed-os
 mcp2515
 Servo
+__pycache__

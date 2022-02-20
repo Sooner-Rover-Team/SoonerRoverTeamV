@@ -11,13 +11,11 @@ def drive(rover, id1, id2=-1):
     locations = []
     
     while True:
-        lat = float(input("Lat: "))
-        lon = float(input("Lon: "))
-        
-        if lat == -1 and lon == -1:
+        coords = [int(item) for item in input("Enter Lat Lon: ").split()]
+        if coords[0] == -1 and coords[1] == -1:
             break
        
-        locations.append([lat, lon])
+        locations.append(coords)
 
     found = rover.driveAlongCoordinates(locations,id1, id2)
     
