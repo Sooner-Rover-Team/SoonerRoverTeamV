@@ -11,7 +11,10 @@ def drive(rover, id1, id2=-1):
     locations = []
     
     while True:
-        coords = [int(item) for item in input("Enter Lat Lon: ").split()]
+        coords = [float(item) for item in input("Enter Lat Lon: ").split()]
+        if len(coords) != 2:
+            print('please input <lat lon>')
+            continue
         if coords[0] == -1 and coords[1] == -1:
             break
        

@@ -14,6 +14,9 @@ from darknet import load_network
 class ARTracker:
 
     # Constructor
+    #Cameras should be a list of file paths to cameras that are to be used
+    #set write to True to write to disk what the cameras are seeing
+    #set useYOLO to True to use yolo when attempting to detect the ar tags
     def __init__(self, cameras, write=False, useYOLO = False):
         self.write=write
         self.distanceToMarker = -1
@@ -21,9 +24,8 @@ class ARTracker:
         self.index1 = -1
         self.index2 = -1
         self.useYOLO = useYOLO
-
-        #self.cameras = np.empty(3, dtype=str)
         self.cameras = cameras
+        
         # Open the config file
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(os.path.dirname(__file__) + '/../config.ini')
@@ -52,12 +54,14 @@ class ARTracker:
             self.networkWidth = darknet.network_width(self.network)
             self.networkHeight = darknet.network_height(self.network)
 
-        # Initialize video writer, fps is set 
+        # Initialize video writer, fps is set to 5
         if self.write:
             self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(
                 self.format[0], self.format[1], self.format[2], self.format[3]), 5, (self.frameWidth, self.frameHeight), False)
+        
         # Set the ar marker dictionary
         self.markerDict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+        
         # Initialize cameras
         self.caps=[]
         for i in range(0, len(self.cameras)):
@@ -69,7 +73,7 @@ class ARTracker:
             self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
             self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
     
-    #helper method to convert YOLO detections into the standard aruco corners format
+    #helper method to convert YOLO detections into the aruco corners format
     def _convertToCorners(self,detections, numCorners):
         corners = []
         xCoef = self.frameWidth / self.networkWidth
@@ -148,7 +152,8 @@ class ARTracker:
                             cv2.waitKey(1)
                         break                        
                      
-            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco
+            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco                
+                #Checks to see if yolo can find a tag
                 if self.useYOLO:
                     detections = []
                     if not self.write:
@@ -164,15 +169,23 @@ class ARTracker:
                     if id2 == -1 and len(detections) > 0:
                         self.corners = self._convertToCorners(detections, 1)
                         self.index1 = 0 #Takes the highest confidence ar tag
+                        if self.write:
+                            self.videoWriter.write(image)   #purely for debug   
+                            cv2.waitKey(1)                        
                     elif len(detections) > 1:
                         self.corners = self._convertToCorners(detections, 2)
                         self.index1 = 0 #takes the two highest confidence ar tags
                         self.index2 = 1
+                        if self.write:
+                            self.videoWriter.write(image)   #purely for debug   
+                            cv2.waitKey(1)
                     print(self.corners)    
-                if self.index1 == -1 or (self.index2 == -1 and id2 != -1): #Not even YOLO saw anything
+                
+                #Not even YOLO saw anything
+                if self.index1 == -1 or (self.index2 == -1 and id2 != -1): 
                     if self.write:
                         self.videoWriter.write(image) 
-                        cv2.imshow('window', image)
+                        #cv2.imshow('window', image)
                         cv2.waitKey(1)
                     self.distanceToMarker = -1 
                     self.angleToMarker = -999 
@@ -193,7 +206,7 @@ class ARTracker:
                                         + (horizontal angle to marker/30) * (focalLength30H - focalLength)
                                         + (vertical angle to marker / 30) * (focalLength30V - focalLength)
             If focalLength30H and focalLength30V both equal focalLength then realFocalLength = focalLength which is good for non huddly cameras
-            Please note that the realFocalLength calculation is an approximations that could be much better if anyone wants to try to come up with something better
+            Please note that the realFocalLength calculation is an approximation that could be much better if anyone wants to try to come up with something better
             '''
             hAngleToMarker = abs(self.angleToMarker)
             centerYMarker = (self.corners[self.index1][0][0][1] + self.corners[self.index1][0][1][1] + \
@@ -236,10 +249,10 @@ class ARTracker:
             self.distanceToMarker = (distanceToMarker1 + distanceToMarker2) / 2
     
         return True 
+        
     '''
     id1 is the marker you want to look for
     specify id2 if you want to look for a gate
-    set write to true to write out images to disk
     cameras=number of cameras to check. -1 for all of them
     '''
     def findMarker(self, id1, id2=-1, cameras=-1):
