@@ -10,19 +10,13 @@ pygame.joystick.init()
 
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 
+# list joysticks
 for joystick in joysticks:
     print('Found',joystick.get_name())
 
-def find_config():
-    current_folder = os.path.dirname(__file__)
-    os.chdir(os.path.curdir)
-    print(os.getcwd())
-    print('cf',current_folder)
-    if current_folder == 'SoonerRoverTeamV':
-        os.chdir(os.path.join(os.getcwd(), 'Mission Control', 'python_drive'))
-        print(os.getcwd())
-
-find_config()
+# change directory to file
+current_folder = os.path.dirname(__file__)
+os.chdir(current_folder)
 
 timer = Clock()
 THRESHOLD = 0.08
@@ -45,6 +39,8 @@ elif CONT_TYPE == 'Xbox360':
     L_Y_AXIS = 1
     R_X_AXIS = 3
     R_Y_AXIS = 4
+    L_BUMPER = 4
+    R_BUMPER = 5
 
 pygame.init()
 
@@ -118,10 +114,10 @@ if __name__ == "__main__":
             if abs(R_X) > THRESHOLD:
                 # right stick x value, unused for rn
                 pass
-            if joystick.get_button(4):
+            if joystick.get_button(L_BUMPER):
                 leftwheels[1:3] = [126] * 2
                 rightwheels[1:3] = [126] * 2
-            if joystick.get_button(5):
+            if joystick.get_button(R_BUMPER):
                 leftwheels[0:2] = [126] * 2
                 rightwheels[0:2] = [126] * 2
 
