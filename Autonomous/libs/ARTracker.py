@@ -5,11 +5,12 @@ import configparser
 import os
 import sys
 
+'''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
 sys.path.append(darknetPath)
 from darknet_images import *
 from darknet import load_network
-
+'''
 
 class ARTracker:
 
