@@ -153,10 +153,10 @@ if __name__ == '__main__':
                     help='indicies of cameras to use')
 
     # parse arguments
-    args: dict[str] = vars(ap.parse_args())
+    args = vars(ap.parse_args())
 
     # create a list of video streams to reference in generate()
-    vslist: list[VideoStream] = []
+    vslist = []
 
     # find up to MAX_CAMERAS attached cameras and try and start streams on them
     if args['source'] == '-1':
