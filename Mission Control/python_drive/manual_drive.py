@@ -118,6 +118,13 @@ if __name__ == "__main__":
             if abs(R_X) > THRESHOLD:
                 # right stick x value, unused for rn
                 pass
+            if joystick.get_button(4):
+                leftwheels[1:3] = [126] * 2
+                rightwheels[1:3] = [126] * 2
+            if joystick.get_button(5):
+                leftwheels[0:2] = [126] * 2
+                rightwheels[0:2] = [126] * 2
+
 
         data = make_message(leftwheels, rightwheels)
 
