@@ -1,3 +1,4 @@
+from random import randint
 import pygame
 import socket
 import configparser
@@ -33,6 +34,8 @@ if CONT_TYPE == 'XboxSeriesX':
     L_Y_AXIS = 1
     R_X_AXIS = 2
     R_Y_AXIS = 3
+    L_BUMPER = 4
+    R_BUMPER = 5
 
 elif CONT_TYPE == 'Xbox360':
     L_X_AXIS = 0
@@ -75,6 +78,16 @@ def isstopped(leftwheels,rightwheels):
             return 0
     return 1
 
+def lights():
+    msg = bytearray(5)
+    msg[0] = 0x23
+    msg[1] = 0x02
+    msg[2] = randint(0,255)
+    msg[3] = randint(0,255)
+    msg[4] = randint(0,255)
+    print(msg)
+    return msg
+
 if __name__ == "__main__":
     running = True
     stopsent = False
@@ -87,8 +100,9 @@ if __name__ == "__main__":
                 if kp[pygame.K_ESCAPE]:
                     running = False
             if event.type == pygame.JOYBUTTONDOWN and event.button == 0:
-                print('wheel toggle')
-                msg = toggle_wheels()
+                print('lights')
+                # msg = toggle_wheels()
+                msg = lights()
                 s.sendall(msg)
 
         for joystick in joysticks:
