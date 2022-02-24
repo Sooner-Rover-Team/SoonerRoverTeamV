@@ -122,7 +122,7 @@ if __name__ == "__main__":
                 pass
             if abs(R_Y) > THRESHOLD:
                 # wheel #4 is the only one that needed to be reversed somehow
-                rightwheels = [axistospeed(R_Y), 252-axistospeed(R_Y), axistospeed(R_Y)]
+                rightwheels = [axistospeed(R_Y)] * 3
             else:
                 rightwheels = [126] * 3
             if abs(R_X) > THRESHOLD:

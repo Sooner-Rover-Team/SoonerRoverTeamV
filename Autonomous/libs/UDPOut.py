@@ -28,8 +28,6 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
         speed_fix.append(int(x))
 
     #print(speed_fix)
-    
-    speed_fix[4] = 252-speed_fix[4]
     cs = 0
     for i in range(6):
         msg[i + 2] = speed_fix[i]
