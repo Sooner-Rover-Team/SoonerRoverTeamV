@@ -5,7 +5,6 @@ import configparser
 from math import ceil, floor, hypot, sqrt, cos, atan, acos, pi
 from pygame.time import Clock
 import os
-from inspect import getsourcefile
 
 pygame.joystick.init()
 
@@ -24,7 +23,7 @@ os.chdir(current_folder)
 timer = Clock()
 THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
-FPS = 30
+FPS = 20
 
 config = configparser.ConfigParser()
 config.read('./config.ini')
@@ -41,6 +40,12 @@ if CONT_TYPE == 'XboxSeriesX':
     L_Y_AXIS = 1
     R_X_AXIS = 2
     R_Y_AXIS = 3
+    L_2_AXIS = 4
+    R_2_AXIS = 5
+    A_BUTTON = 0
+    B_BUTTON = 1
+    X_BUTTON = 2
+    Y_BUTTON = 3
     L_BUMPER = 4
     R_BUMPER = 5
 
@@ -73,7 +78,8 @@ CLAW_L_CLOSED = 87
 CLAW_R_OPEN = 73
 CLAW_R_CLOSED = 28
 clawL = CLAW_L_OPEN
-clawR = CLAW_L_CLOSED;
+clawR = CLAW_R_OPEN;
+claw_closed = False
 coord_u = 18.5;       # wrist position
 coord_v = 9.5;
 phi = 0.0;            # wrist angle
@@ -178,15 +184,8 @@ if __name__ == "__main__":
                 if kp[pygame.K_ESCAPE]:
                     running = False
             if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 0:
-                    if mode == 'drive':
-                        print('lights')
-                        msg = lights()
-                        ebox_socket.sendall(msg)
-                    else:
-                        print('alt config')
-                        alt_arm_config = not alt_arm_config
-                elif event.button == 1:
+                # switch modes
+                if event.button == B_BUTTON:
                     if mode == 'drive':
                         mode = 'arm'
                         print('mode has been changed to arm')
@@ -197,6 +196,24 @@ if __name__ == "__main__":
                     else:
                         mode = 'drive'
                         print('mode has been changed to drive')
+                if mode == 'drive':
+                    if event.button == A_BUTTON:
+                        print('lights')
+                        msg = lights()
+                        ebox_socket.sendall(msg)
+                else:
+                    if event.button == X_BUTTON:
+                        print('alt config')
+                        alt_arm_config = not alt_arm_config
+                    elif event.button == A_BUTTON:
+                        print('clamp')
+                        if claw_closed:
+                            clawL = CLAW_L_OPEN
+                            clawR = CLAW_R_OPEN
+                        else:
+                            clawL = CLAW_L_CLOSED
+                            clawR = CLAW_R_CLOSED
+                        claw_closed = not claw_closed
             
         if joystick.get_button(6) and joystick.get_button(7):
             running = False
@@ -204,6 +221,8 @@ if __name__ == "__main__":
         L_Y = joystick.get_axis(L_Y_AXIS)
         R_X = joystick.get_axis(R_X_AXIS)
         R_Y = joystick.get_axis(R_Y_AXIS)
+        L_2 = joystick.get_axis(L_2_AXIS)
+        R_2 = joystick.get_axis(R_2_AXIS)
 
         if mode == 'drive':
             # print('fixed',axistospeed(L_Y))
@@ -245,15 +264,21 @@ if __name__ == "__main__":
             # TODO: Figure this shit out
             """ ALL OF THIS CODE WAS COPIED FROM THE OLD ARM CODE """
             """ WE DONT HAVE TIME TO UNDERSTAND IT RN, ALL IT NEEDS """
-            """ TO DO IS WORK"""
-            movement_factor = 0.06
+            """ TO DO IS WORK """
+            movement_factor = 0.2 / (FPS/10)
             temp_u = coord_u
             temp_v = coord_v
             if(abs(L_Y) > THRESHOLD_HIGH):
                 temp_u -= L_Y*movement_factor
             if(abs(R_Y) > THRESHOLD_HIGH):
                 temp_v -= R_Y*movement_factor
-            
+            if(abs(R_X) > THRESHOLD_HIGH):
+                phi = R_X
+            if(abs(L_2) > THRESHOLD_HIGH):
+                theta = -L_2
+            if(abs(R_2) > THRESHOLD_HIGH):
+                theta = R_2
+
             if not alt_arm_config:
                 #default configuration
                 #make sure it stays in cylindrical bounds:
