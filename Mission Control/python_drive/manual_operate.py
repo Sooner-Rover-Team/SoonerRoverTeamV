@@ -1,4 +1,9 @@
+from asyncio import threads
+from socketserver import BaseRequestHandler
+from sys import base_prefix
+from threading import Thread
 from random import randint
+from time import sleep
 import pygame
 import socket
 import configparser
@@ -24,6 +29,7 @@ timer = Clock()
 THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 FPS = 20
+flash = False
 
 config = configparser.ConfigParser()
 config.read('./config.ini')
@@ -120,18 +126,27 @@ def isstopped(leftwheels,rightwheels):
             return 0
     return 1
 
-def lights():
+def lights(r,g,b):
     msg = bytearray(5)
     msg[0] = 0x23
     msg[1] = 0x02
-    msg[2] = randint(0,255)
-    msg[3] = randint(0,255)
-    msg[4] = randint(0,255)
+    msg[2] = r & 0xff
+    msg[3] = g & 0xff
+    msg[4] = b & 0xff
     print(msg)
     return msg
 
+# def police():
+#     if flash:
+#         msg = lights(255,0,0)
+#         ebox_socket.sendall(msg)
+#         sleep(.5)
+#         msg = lights(0,0,255)
+#         ebox_socket.sendall(msg)
+#         sleep(.5)
+
 def draw_arm_stuff():
-    scale = 12.0
+    scale = 12
     origin_x = 150
     origin_y = 375
 
@@ -177,12 +192,19 @@ if __name__ == "__main__":
     stopsent = False
     leftwheels = [126] * 3
     rightwheels = [126] * 3
+    # t = Thread
     while(running):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 kp = pygame.key.get_pressed()
                 if kp[pygame.K_ESCAPE]:
                     running = False
+            if event.type == pygame.JOYDEVICEREMOVED:
+                print('joystick disconnected')
+                joystick.quit()
+            if event.type == pygame.JOYDEVICEADDED:
+                print('joystick connected')
+                joystick = pygame.joystick.Joystick(0)
             if event.type == pygame.JOYBUTTONDOWN:
                 # switch modes
                 if event.button == B_BUTTON:
@@ -199,7 +221,11 @@ if __name__ == "__main__":
                 if mode == 'drive':
                     if event.button == A_BUTTON:
                         print('lights')
-                        msg = lights()
+                        if flash:
+                            msg = lights(255,0,0)
+                        else:
+                            msg = lights(0,0,255)
+                        flash = not flash
                         ebox_socket.sendall(msg)
                 else:
                     if event.button == X_BUTTON:
@@ -214,6 +240,9 @@ if __name__ == "__main__":
                             clawL = CLAW_L_CLOSED
                             clawR = CLAW_R_CLOSED
                         claw_closed = not claw_closed
+        
+        if pygame.joystick.get_count() == 0:
+            continue
             
         if joystick.get_button(6) and joystick.get_button(7):
             running = False
@@ -269,15 +298,18 @@ if __name__ == "__main__":
             temp_u = coord_u
             temp_v = coord_v
             if(abs(L_Y) > THRESHOLD_HIGH):
-                temp_u -= L_Y*movement_factor
-            if(abs(R_Y) > THRESHOLD_HIGH):
-                temp_v -= R_Y*movement_factor
+                temp_v -= L_Y*movement_factor
+            if(abs(L_X) > THRESHOLD_HIGH):
+                temp_u -= -L_X*movement_factor
             if(abs(R_X) > THRESHOLD_HIGH):
                 phi = R_X
-            if(abs(L_2) > THRESHOLD_HIGH):
-                theta = -L_2
-            if(abs(R_2) > THRESHOLD_HIGH):
-                theta = R_2
+            else:
+                phi = 0
+            L_2 = (L_2+1)/2
+            R_2 = (R_2+1)/2
+            if(abs(R_Y) > THRESHOLD_HIGH):
+                theta = -R_Y
+            else: theta = 0
 
             if not alt_arm_config:
                 #default configuration
@@ -357,8 +389,15 @@ if __name__ == "__main__":
             wrist_rotation = 127 * phi;
             if (wrist_rotation < 10 and wrist_rotation > -10):
                 wrist_rotation = 0;
-            
-            base_rotation = 90 + (L_X * 20); # between 0 and 180, centered (no motion) at 90
+
+            if (R_2 > THRESHOLD_LOW and L_2 > THRESHOLD_LOW):
+                base_rotation = 90
+            elif (L_2 > THRESHOLD_LOW):
+                base_rotation = 90 - L_2 * 20
+            elif (R_2 > THRESHOLD_LOW):
+                base_rotation = 90 + R_2 * 21
+            else:
+                base_rotation = 90
 
             # send the data
             out = []
