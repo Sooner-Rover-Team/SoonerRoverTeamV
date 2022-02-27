@@ -1,9 +1,3 @@
-from asyncio import threads
-from socketserver import BaseRequestHandler
-from sys import base_prefix
-from threading import Thread
-from random import randint
-from time import sleep
 import pygame
 import socket
 import configparser
@@ -37,7 +31,10 @@ EBOX_HOST = config['Connection']['EBOX_HOST']
 EBOX_PORT = int(config['Connection']['EBOX_PORT'])
 ARM_HOST = config['Connection']['ARM_HOST']
 ARM_PORT = int(config['Connection']['ARM_PORT'])
-CONT_TYPE = config['Controller']['TYPE']
+if 'Series X' in joystick.get_name():
+    CONT_TYPE = 'XboxSeriesX'
+elif 'Xbox 360' in joystick.get_name():
+    CONT_TYPE = 'Xbox360'
 
 mode = 'drive'
 
@@ -48,20 +45,22 @@ if CONT_TYPE == 'XboxSeriesX':
     R_Y_AXIS = 3
     L_2_AXIS = 4
     R_2_AXIS = 5
-    A_BUTTON = 0
-    B_BUTTON = 1
-    X_BUTTON = 2
-    Y_BUTTON = 3
-    L_BUMPER = 4
-    R_BUMPER = 5
+
 
 elif CONT_TYPE == 'Xbox360':
     L_X_AXIS = 0
     L_Y_AXIS = 1
+    L_2_AXIS = 2
     R_X_AXIS = 3
     R_Y_AXIS = 4
-    L_BUMPER = 4
-    R_BUMPER = 5
+    R_2_AXIS = 5
+
+A_BUTTON = 0
+B_BUTTON = 1
+X_BUTTON = 2
+Y_BUTTON = 3
+L_BUMPER = 4
+R_BUMPER = 5
 
 pygame.init()
 
