@@ -3,7 +3,7 @@
 #include <Servo.h>
 
 //Set equal to 1 for serial debugging
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 
 // Note: analogWrite() can not be used on pins 9 or 10 because of the servo library.
 // Servos can still be used on those pins though
@@ -60,29 +60,24 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
   IPAddress src(src_ip[0], src_ip[1], src_ip[2], src_ip[3]);
 
   // serial transmission blueprints:
-  
-  // wheels
-  // [start transmission = -127 or 255] [0] [overdrive] [left wheels]...
-  // ...[right wheels] [gimble tilt] [gimble pan] [hash]
-  
   // hash = (sum of data bytes--no start or id) / (num of bytes)
 
 #if DEBUG_MODE == 1
   for (int i = 0; i < len; i++)
   {
-    Serial.print(int(data[i]));
+    Serial.print(uint8_t(data[i]));
     Serial.print(", ");
   }
   Serial.print("\n");
 #endif
 
-  // check for -127, message type
+  // check for 255, message type
   if (len >= 2)
   {
-    if (data[0] != -127)
+    if (uint8_t(data[0]) != 255)
     {
       #if DEBUG_MODE == 1
-      Serial.println("Message does not start with -127!");
+      Serial.println("Message does not start with 255!");
       #endif
       return;
     }
@@ -104,11 +99,19 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
       wristPhi_speed = data[6];
       clawL_pos = uint8_t(data[7]);
       clawR_pos = uint8_t(data[8]);
-      
       serialHash = uint8_t(data[9]);
       myHash = (base_speed+shoulder_pos+elbow_pos+wristTheta_speed+wristPhi_speed+clawL_pos+clawR_pos) / 7;
+      #if DEBUG_MODE
+      Serial.print("wrist_theta: ");
+      Serial.println(wristTheta_speed);
+      Serial.print("wrist_phi: ");
+      Serial.println(wristPhi_speed);
+      #endif
       if (myHash == serialHash)
       {
+        #if DEBUG_MODE        
+        Serial.println("servos updated");
+        #endif
         updateServos();
         timeOut = millis();
       }
@@ -119,7 +122,6 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
       }
       #endif
     }
-
     else // unknown type
     {
       #if DEBUG_MODE == 1
@@ -141,9 +143,9 @@ void setup() {
 
   ether.staticSetup(myip, gwip);
 
-  ether.printIp("IP:  ", ether.myip);
-  ether.printIp("GW:  ", ether.gwip);
-  ether.printIp("DNS: ", ether.dnsip);
+//  ether.printIp("IP:  ", ether.myip);
+//  ether.printIp("GW:  ", ether.gwip);
+//  ether.printIp("DNS: ", ether.dnsip);
 
   //register udpSerialPrint()
   ether.udpServerListenOnPort(&udpSerialPrint, myport);
@@ -187,6 +189,10 @@ void loop() {
     timeOut = millis();
     
     base.write(90);
+    shoulder.write(shoulder_pos);
+    elbow.write(elbow_pos);
+    clawL.write(clawL_pos);
+    clawR.write(clawR_pos);
     digitalWrite(WRIST_L1_PIN, LOW);
     digitalWrite(WRIST_L2_PIN, LOW);
     analogWrite(WRIST_L_SPEED_PIN, 0);
@@ -204,46 +210,53 @@ void updateServos() {
   base.write(base_speed);
   shoulder.write(shoulder_pos);
   elbow.write(elbow_pos);
+  #if DEBUG_MODE
+  Serial.print("shoulder: ");
+  Serial.println(shoulder_pos);
+  Serial.print("elbow: ");
+  Serial.println(elbow_pos);
+  #endif
   clawL.write(clawL_pos);
   clawR.write(clawR_pos);
 
+  int offset = 0;
   // Right now we can't rotate and tilt ar the same time we'll need to fix this later
   if (wristPhi_speed > 0) {
     digitalWrite(WRIST_L1_PIN, HIGH);
     digitalWrite(WRIST_L2_PIN, LOW);
-    analogWrite(WRIST_L_SPEED_PIN, 200); //abs(wristPhi_speed)*2);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed+offset)*2);
     digitalWrite(WRIST_R1_PIN, LOW);
     digitalWrite(WRIST_R2_PIN, HIGH);
-    analogWrite(WRIST_R_SPEED_PIN, 200); //abs(wristPhi_speed)*2);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed+offset)*2);
     
     return;
   }
   if (wristPhi_speed < 0) {
     digitalWrite(WRIST_L1_PIN, LOW);
     digitalWrite(WRIST_L2_PIN, HIGH);
-    analogWrite(WRIST_L_SPEED_PIN, 200); //abs(wristPhi_speed)*2);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed+offset)*2);
     digitalWrite(WRIST_R1_PIN, HIGH);
     digitalWrite(WRIST_R2_PIN, LOW);
-    analogWrite(WRIST_R_SPEED_PIN, 200); //abs(wristPhi_speed)*2);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed+offset)*2);
     return;
   }
   if (wristTheta_speed > 0) {
     digitalWrite(WRIST_L1_PIN, HIGH);
     digitalWrite(WRIST_L2_PIN, LOW);
-    analogWrite(WRIST_L_SPEED_PIN, 200); //abs(wristTheta_speed)*2);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristTheta_speed+offset)*2);
     digitalWrite(WRIST_R1_PIN, HIGH);
     digitalWrite(WRIST_R2_PIN, LOW);
-    analogWrite(WRIST_R_SPEED_PIN, 200); //abs(wristTheta_speed)*2);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristTheta_speed+offset)*2);
     
     return;
   }
   if (wristTheta_speed < 0) {
     digitalWrite(WRIST_L1_PIN, LOW);
     digitalWrite(WRIST_L2_PIN, HIGH);
-    analogWrite(WRIST_L_SPEED_PIN, 200); //abs(wristTheta_speed)*2);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristTheta_speed+offset)*2);
     digitalWrite(WRIST_R1_PIN, LOW);
     digitalWrite(WRIST_R2_PIN, HIGH);
-    analogWrite(WRIST_R_SPEED_PIN, 200); //abs(wristTheta_speed)*2);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristTheta_speed+offset)*2);
     return;
   }
   if (wristPhi_speed == 0 && wristTheta_speed == 0) {

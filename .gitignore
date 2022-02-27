@@ -24,3 +24,7 @@ mbed-os
 mcp2515
 Servo
 __pycache__
+*.qmake*
+*.user
+build-udp_mc_arm*
+build_win_64/

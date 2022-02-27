@@ -1,5 +1,7 @@
 import socket
 
+from numpy import byte
+
 def sendUDP(HOST,PORT,message): 
     #sends a message over UDP to a specific host and port
     BUFFERSIZE = 1024
@@ -26,8 +28,6 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
         speed_fix.append(int(x))
 
     #print(speed_fix)
-    
-    speed_fix[4] = 252-speed_fix[4]
     cs = 0
     for i in range(6):
         msg[i + 2] = speed_fix[i]
@@ -38,6 +38,24 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
 
     #print(msg)
     #send wheel speeds
+    sendUDP(HOST,PORT,msg)
+
+def sendLED(HOST, PORT, color):
+    red = 0
+    green = 0
+    blue = 0
+    msg = bytearray(5)
+    msg[0] = 0x23
+    msg[1] = 0x02
+    if color == 'r':
+        red = 255
+    elif color == 'g':
+        green = 255
+    elif color == 'b':
+        blue = 255
+    msg[2] = red
+    msg[3] = green
+    msg[4] = blue
     sendUDP(HOST,PORT,msg)
 
 if __name__ == "__main__":
