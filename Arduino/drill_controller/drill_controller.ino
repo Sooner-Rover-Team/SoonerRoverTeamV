@@ -3,7 +3,7 @@
 #include <Servo.h>
 
 // Set equal to 1 for serial debugging
-#define DEBUG_MODE 0
+#define DEBUG_MODE 1
 
 // 2 is the drill ID
 #define DEVICE_ID 2
@@ -14,17 +14,18 @@
 #define PIN_ACTUATOR_DOWN 3
 #define PIN_TALON_FAN 7
 #define PIN_TALON_DRILL 6
+#define PIN_TALON_CAROUSEL 9 
 
 // servo objects for talon motor controllers
-Servo talonFan, talonDrill;
+Servo talonFan, talonDrill, talonCarousel;
 
 // ethernet interface ip address (static ip)
-static byte myip[] = { 10, 0, 0, 103 };
+static byte myip[] = {10, 0, 0, 103};
 static int myport = 1003;
 // gateway ip address
-static byte gwip[] = { 10, 0, 0, 1 };
+static byte gwip[] = {10, 0, 0, 1};
 // ethernet mac address - must be unique on your network
-static byte mymac[] = { 0xAC, 0xDC, 0x0D, 0xAD, 0x00, 0x00 };
+static byte mymac[] = {0xAC, 0xDC, 0x0D, 0xAD, 0x00, 0x00};
 // tcp/ip send and receive buffer
 byte Ethernet::buffer[500];
 
@@ -36,82 +37,87 @@ char actuatorDir = 2; // 0 is down, 1 is up, 2 is neither (not moving)
 char actuatorSpeed = 0;
 char drillSpeed = 0;
 char fanSpeed = 0;
+char carouselSpeed = 0;
+
 
 unsigned long timeOut = 0;
 
-//callback that prints received packets to the serial port
-void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, const char *data, uint16_t len) {
+// callback that prints received packets to the serial port
+void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, const char *data, uint16_t len)
+{
   IPAddress src(src_ip[0], src_ip[1], src_ip[2], src_ip[3]);
 
   // serial transmission blueprints:
-  
+
   // drill
-  
+
   // [start transmission = -127 or 255] [2] ...
   // ...[direction (0, 1, or 2)] [actuator speed (-127 to 126)]...
   // ...[drill speed] [fan speed] [hash]
-  
+
   // hash = (sum of data bytes--no start or id) / (num of bytes)
 
 #if DEBUG_MODE == 1
   for (int i = 0; i < len; i++)
   {
-    Serial.print(int(data[i]));
-    Serial.print(", ");
+//    Serial.print(uint8_t(data[i]));
+//    Serial.print(", ");
   }
   Serial.print("\n");
 #endif
 
-  // check for -127, message type
+  // check for 255, message type
   if (len >= 2)
   {
-    if (data[0] != -127)
+    if (uint8_t(data[0]) != 255)
     {
-      #if DEBUG_MODE == 1
-      Serial.println("Message does not start with -127!");
-      #endif
+#if DEBUG_MODE == 1
+      Serial.println("Message does not start with 255!");
+#endif
       return;
     }
-    
+
     if (data[1] == DEVICE_ID)
     {
-      if (len != 7)
+      if (len != 8)
       {
-        #if DEBUG_MODE == 1
+#if DEBUG_MODE == 1
         Serial.println("Drill message is wrong length!");
-        #endif
+#endif
         return;
       }
-      actuatorDir = data[2];
-      actuatorSpeed = data[3];
-      drillSpeed = data[4];
-      fanSpeed = data[5];
-    
-      serialHash = data[6];
-      myHash = (actuatorDir+actuatorSpeed+drillSpeed+fanSpeed)/4;
+      actuatorDir = uint8_t(data[2]);
+      actuatorSpeed = uint8_t(data[3]);
+      drillSpeed = uint8_t(data[4]);
+      fanSpeed = uint8_t(data[5]);
+      carouselSpeed = uint8_t(data[6]);
+
+      serialHash = uint8_t(data[7]);
+      myHash = (actuatorDir + actuatorSpeed + drillSpeed + fanSpeed) & 0xff;
       if (myHash == serialHash)
       {
         updateServos();
         timeOut = millis();
       }
-      #if DEBUG_MODE == 1
+#if DEBUG_MODE == 1
       else
       {
         Serial.println("Bad hash!");
       }
-      #endif
+#endif
     }
     else // unknown type
     {
-      #if DEBUG_MODE == 1
+#if DEBUG_MODE == 1
       Serial.println("Unknown device id!");
-      #endif
+#endif
       return;
     }
   }
 }
 
-void setup() {
+void setup()
+{
 #if DEBUG_MODE == 1
   Serial.begin(9600);
   if (ether.begin(sizeof Ethernet::buffer, mymac, 10) == 0)
@@ -126,30 +132,33 @@ void setup() {
   ether.printIp("GW:  ", ether.gwip);
   ether.printIp("DNS: ", ether.dnsip);
 
-  //register udpSerialPrint() to port
+  // register udpSerialPrint() to port
   ether.udpServerListenOnPort(&udpSerialPrint, myport);
 
   // setup servos (they're really Talon motor controllers)
   talonFan.attach(PIN_TALON_FAN);
   talonDrill.attach(PIN_TALON_DRILL);
+  talonCarousel.attach(PIN_TALON_CAROUSEL);
 
   talonFan.write(90);
   talonDrill.write(90);
+  talonCarousel.write(90);
 
   // Setup actuator control pins (analog outputs)
   pinMode(PIN_ACTUATOR_UP, OUTPUT);
   pinMode(PIN_ACTUATOR_DOWN, OUTPUT);
-  
+
   analogWrite(PIN_ACTUATOR_UP, 0);
   analogWrite(PIN_ACTUATOR_DOWN, 0);
 }
 
-void loop() {
+void loop()
+{
   // this must be called for ethercard functions to work.
   ether.packetLoop(ether.packetReceive());
 
   // stop all motors after 1 second of no messages
-  if (millis()-timeOut >= 1000)
+  if (millis() - timeOut >= 1000)
   {
     timeOut = millis();
     talonFan.write(90);
@@ -163,23 +172,39 @@ void loop() {
   }
 }
 
-void updateServos() {
+void updateServos()
+{
   // convert char (-127 to 126) to pwm values (0 to 255)
   int speedOutput = actuatorSpeed;
-  if (speedOutput < 0)
-    speedOutput *= -1;
-
-  speedOutput = map(speedOutput, 0, 90, 0, 255);
+//  if (speedOutput < 0)
+//    speedOutput *= -1;
+  fanSpeed = map(uint8_t(fanSpeed), 0, 255, 90, 6);
+  drillSpeed = map(uint8_t(drillSpeed), 0, 255, 90, 6);
   
-  if (actuatorSpeed < 0)
+//  speedOutput = map(uint8_t(speedOutput), 0, 255, 0, 255);
+  if (DEBUG_MODE) {
+    Serial.print("as: ");
+    Serial.print(int(actuatorSpeed));
+    Serial.print(" fs: ");
+    Serial.print(int(fanSpeed));
+    Serial.print(" ds: ");
+    Serial.print(int(drillSpeed));
+    Serial.print(" cs: ");
+    Serial.println(int(carouselSpeed));
+  }
+  
+
+  if (actuatorDir == 0)
   {
     // down
+    Serial.println("GO DOWN");
     analogWrite(PIN_ACTUATOR_UP, 0);
     analogWrite(PIN_ACTUATOR_DOWN, speedOutput);
   }
-  else if (actuatorSpeed > 0)
+  else if (actuatorDir == 1)
   {
-    //up
+    // up
+    Serial.println("GO UP");
     analogWrite(PIN_ACTUATOR_UP, speedOutput);
     analogWrite(PIN_ACTUATOR_DOWN, 0);
   }
@@ -190,6 +215,7 @@ void updateServos() {
     analogWrite(PIN_ACTUATOR_DOWN, 0);
   }
 
-  talonFan.write(map(fanSpeed, -127, 126, 0, 180));
-  talonDrill.write(map(drillSpeed, -127, 126, 0, 180));
+  talonFan.write(fanSpeed);
+  talonDrill.write(drillSpeed);
+  talonCarousel.write(carouselSpeed);
 }

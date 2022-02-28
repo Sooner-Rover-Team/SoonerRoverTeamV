@@ -6,6 +6,8 @@
 // Arduino Nano pins to attach Talon controllers to
 #define PIN_S_1 6
 #define PIN_S_2 7
+#define PIN_ACTUATOR_UP 5
+#define PIN_ACTUATOR_DOWN 3
 
 // servo objects
 Servo s1;
@@ -15,6 +17,7 @@ Servo s2;
 String inString = "";
 Servo* currentServo = &s1;
 bool both = false;
+bool actuator = false;
 
 void setup() {
   // setup servos
@@ -23,6 +26,13 @@ void setup() {
   
   s2.write(90);
   s1.write(90);
+
+  // Setup actuator control pins (analog outputs from range (-256, 256) with -256 being 12V to PIN_ACTUATOR_DOWN and 256 being 12V to PIN_ACTUATOR_UP)
+  pinMode(PIN_ACTUATOR_UP, OUTPUT);
+  pinMode(PIN_ACTUATOR_DOWN, OUTPUT);
+
+  analogWrite(PIN_ACTUATOR_UP, 0);
+  analogWrite(PIN_ACTUATOR_DOWN, 0);
   
   // setup serial
   Serial.begin(9600);
@@ -34,7 +44,8 @@ void setup() {
   Serial.println("Enter a character to select motors:");
   Serial.println("A = Drill (> 90)");
   Serial.println("B = Fan (> 90)");
-  Serial.println("C = Drill & Fan (> 90)");
+  Serial.println("C = Actuator");
+  Serial.println("D = Drill & Fan (> 90)");
 }
 
 void loop() {
@@ -76,9 +87,17 @@ void loop() {
           s1.write(temp);
           s2.write(temp);
         }
-        else
+        else if (!actuator)
         {
           currentServo->write(temp);
+        }
+        else if (temp < 0) {
+          analogWrite(PIN_ACTUATOR_DOWN, abs(temp));
+          analogWrite(PIN_ACTUATOR_UP, 0);
+        }
+        else {
+          analogWrite(PIN_ACTUATOR_UP, temp);
+          analogWrite(PIN_ACTUATOR_DOWN, 0);
         }
       }
       else
@@ -86,18 +105,27 @@ void loop() {
         if (inString == "A" || inString == "a")
         {
           both = false;
+          actuator = false;
           currentServo = &s1;
           Serial.println("Selected Drill");
         }
         else if (inString == "B" || inString == "b")
         {
           both = false;
+          actuator = false;
           currentServo = &s2;
           Serial.println("Selected Fan");
         }
         else if (inString == "C" || inString == "c")
         {
+          both = false;
+          actuator = true;
+          Serial.println("Selected Actuator");
+        }
+        else if (inString == "D" || inString == "d")
+        {
           both = true;
+          actuator = false;
           Serial.println("Selected Both");
         }
         else
@@ -105,6 +133,8 @@ void loop() {
           Serial.println("Stopping all motors.");
           s1.write(90);
           s2.write(90);
+          analogWrite(PIN_ACTUATOR_UP, 0);
+          analogWrite(PIN_ACTUATOR_DOWN, 0);
         }
       }
 
