@@ -25,14 +25,15 @@ ARM_HOST = config['Connection']['ARM_HOST']
 ARM_PORT = int(config['Connection']['ARM_PORT'])
 SCI_HOST = config['Connection']['SCI_HOST']
 SCI_PORT = int(config['Connection']['SCI_PORT'])
-if 'Series X' in joystick.get_name():
-    CONT_TYPE = 'XboxSeriesX'
-elif 'Xbox 360' in joystick.get_name():
-    CONT_TYPE = 'Xbox360'
+CONT_CONFIG = int(config['Controller']['CONFIG'])
+# if 'Series X' in joystick.get_name():
+#     CONT_TYPE = 'XboxSeriesX'
+# elif 'Xbox 360' in joystick.get_name():
+#     CONT_TYPE = 'Xbox360'
 
 """ Define axes and button numbers for different controllers """
 
-if CONT_TYPE == 'XboxSeriesX':
+if CONT_CONFIG == 0:
     L_X_AXIS = 0
     L_Y_AXIS = 1
     R_X_AXIS = 2
@@ -41,7 +42,7 @@ if CONT_TYPE == 'XboxSeriesX':
     R_2_AXIS = 5
 
 
-elif CONT_TYPE == 'Xbox360':
+elif CONT_CONFIG == 1:
     L_X_AXIS = 0
     L_Y_AXIS = 1
     L_2_AXIS = 2
@@ -114,6 +115,7 @@ act_speed = 0
 drill_speed = 0
 fan_speed = 0
 carousel_speed = 0
+carousel_turn = 0
 """ pretty simple actually """
 
 """ round, basically """
@@ -144,12 +146,12 @@ def arm_messge(claw_l, claw_r, base_rotation, shoulder_length, elbow_length, wri
     out.append(int(wrist_rotation) & 0xff)
     out.append(claw_l)
     out.append(claw_r)
-    out.append(int((base_rotation+shoulder_length+elbow_length+wrist_angle+wrist_rotation+claw_l+claw_r)/7)&0xff)
+    out.append(int(sum(out[2:9])) & 0xff)
     return out
 
 """ make a science message """
-def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed):
-    msg = bytearray(8)
+def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed, carousel_turn):
+    msg = bytearray(9)
     msg[0] = 0xff
     msg[1] = 2
     msg[2] = act_dir
@@ -157,7 +159,8 @@ def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed):
     msg[4] = drill_speed
     msg[5] = fan_speed
     msg[6] = carousel_speed
-    msg[7] = sum(msg[2:7]) & 0xff
+    msg[7] = carousel_turn
+    msg[8] = sum(msg[2:8]) & 0xff
     return msg
 
 """ wheel toggle message """
@@ -374,14 +377,18 @@ if __name__ == "__main__":
                 fan_speed += int(20 * R_2)
                 fan_speed = 255 if fan_speed > 255 else fan_speed
             if (joystick.get_button(L_BUMPER)):
-                carousel_speed = 70
+                carousel_speed = 60
             elif (joystick.get_button(R_BUMPER)):
-                carousel_speed = 110
+                carousel_speed = 120
             else:
                 carousel_speed = 90
+            if joystick.get_button(A_BUTTON):
+                carousel_turn = 1
+            else:
+                carousel_turn = 0
             fan_speed &= 0xff
             print(act_dir,act_speed,fan_speed,drill_speed, carousel_speed)
-            msg = sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed)
+            msg = sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed, carousel_turn)
             
             science_socket.sendall(msg)
 

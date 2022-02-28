@@ -1,5 +1,4 @@
 from math import hypot, sqrt, cos, atan, acos, pi
-from matplotlib.pyplot import text
 import pygame
 WHITE = (255,255,255)
 BLACK = (0,0,0)
