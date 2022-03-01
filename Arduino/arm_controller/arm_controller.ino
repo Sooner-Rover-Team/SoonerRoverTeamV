@@ -29,9 +29,11 @@
 
 // ethernet interface ip address (static ip)
 static byte myip[] = {10, 0, 0, 102};
+//static byte myip[] = {192, 168, 1, 102};
 static int myport = 1002;
 // gateway ip address
 static byte gwip[] = {10, 0, 0, 1};
+//static byte gwip[] = {192, 168, 1, 1};
 // ethernet mac address - must be unique on your network
 static byte mymac[] = {0x72, 0x69, 0xFF, 0xFF, 0x30, 0x31};
 // tcp/ip send and receive buffer
@@ -95,22 +97,22 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
       base_speed = uint8_t(data[2]);
       shoulder_pos = uint8_t(data[3]);
       elbow_pos = uint8_t(data[4]);
-      wristTheta_speed = data[5];
-      wristPhi_speed = data[6];
+      wristTheta_speed = uint8_t(data[5]);
+      wristPhi_speed = uint8_t(data[6]);
       clawL_pos = uint8_t(data[7]);
       clawR_pos = uint8_t(data[8]);
       serialHash = uint8_t(data[9]);
-      myHash = (base_speed + shoulder_pos + elbow_pos + wristTheta_speed + wristPhi_speed + clawL_pos + clawR_pos) / 7;
+      myHash = (base_speed + shoulder_pos + elbow_pos + wristTheta_speed + wristPhi_speed + clawL_pos + clawR_pos) & 0xff;
 #if DEBUG_MODE
-      Serial.print("wrist_theta: ");
-      Serial.println(wristTheta_speed);
-      Serial.print("wrist_phi: ");
-      Serial.println(wristPhi_speed);
+//      Serial.print("wrist_theta: ");
+//      Serial.println(wristTheta_speed);
+//      Serial.print("wrist_phi: ");
+//      Serial.println(wristPhi_speed);
 #endif
       if (myHash == serialHash)
       {
 #if DEBUG_MODE
-        Serial.println("servos updated");
+//        Serial.println("servos updated");
 #endif
         updateServos();
         timeOut = millis();
@@ -118,7 +120,8 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
 #if DEBUG_MODE == 1
       else
       {
-        Serial.println("Bad hash!");
+        Serial.print("Bad hash!");
+        Serial.println(myHash);
       }
 #endif
     }
@@ -214,37 +217,18 @@ void updateServos()
   shoulder.write(shoulder_pos);
   elbow.write(elbow_pos);
 #if DEBUG_MODE
-  Serial.print("shoulder: ");
-  Serial.println(shoulder_pos);
-  Serial.print("elbow: ");
-  Serial.println(elbow_pos);
+//  Serial.print("shoulder: ");
+//  Serial.println(shoulder_pos);
+//  Serial.print("elbow: ");
+//  Serial.println(elbow_pos);
 #endif
   clawL.write(clawL_pos);
   clawR.write(clawR_pos);
+  wristPhi_speed = int(wristPhi_speed);
+  wristTheta_speed = int(wristTheta_speed);
 
   int offset = 0;
   // Right now we can't rotate and tilt ar the same time we'll need to fix this later
-  if (wristPhi_speed > 0)
-  {
-    digitalWrite(WRIST_L1_PIN, HIGH);
-    digitalWrite(WRIST_L2_PIN, LOW);
-    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
-    digitalWrite(WRIST_R1_PIN, LOW);
-    digitalWrite(WRIST_R2_PIN, HIGH);
-    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
-
-    return;
-  }
-  if (wristPhi_speed < 0)
-  {
-    digitalWrite(WRIST_L1_PIN, LOW);
-    digitalWrite(WRIST_L2_PIN, HIGH);
-    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
-    digitalWrite(WRIST_R1_PIN, HIGH);
-    digitalWrite(WRIST_R2_PIN, LOW);
-    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
-    return;
-  }
   if (wristTheta_speed > 0)
   {
     digitalWrite(WRIST_L1_PIN, HIGH);
@@ -253,6 +237,8 @@ void updateServos()
     digitalWrite(WRIST_R1_PIN, HIGH);
     digitalWrite(WRIST_R2_PIN, LOW);
     analogWrite(WRIST_R_SPEED_PIN, abs(wristTheta_speed + offset) * 2);
+    Serial.print("wrist go up: ");
+    Serial.println(abs(wristTheta_speed + offset) *2);
 
     return;
   }
@@ -264,6 +250,28 @@ void updateServos()
     digitalWrite(WRIST_R1_PIN, LOW);
     digitalWrite(WRIST_R2_PIN, HIGH);
     analogWrite(WRIST_R_SPEED_PIN, abs(wristTheta_speed + offset) * 2);
+    return;
+  }
+  if (wristPhi_speed > 0)
+  {
+    digitalWrite(WRIST_L1_PIN, HIGH);
+    digitalWrite(WRIST_L2_PIN, LOW);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
+    digitalWrite(WRIST_R1_PIN, LOW);
+    digitalWrite(WRIST_R2_PIN, HIGH);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
+//    Serial.println("phi is positive"); 
+
+    return;
+  }
+  if (wristPhi_speed < 0)
+  {
+    digitalWrite(WRIST_L1_PIN, LOW);
+    digitalWrite(WRIST_L2_PIN, HIGH);
+    analogWrite(WRIST_L_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
+    digitalWrite(WRIST_R1_PIN, HIGH);
+    digitalWrite(WRIST_R2_PIN, LOW);
+    analogWrite(WRIST_R_SPEED_PIN, abs(wristPhi_speed + offset) * 2);
     return;
   }
   if (wristPhi_speed == 0 && wristTheta_speed == 0)

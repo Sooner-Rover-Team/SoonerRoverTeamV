@@ -7,8 +7,9 @@ from pygame.time import Clock
 import os
 
 """ Change the current directory so config loads right """
-current_folder = os.path.dirname(__file__)
-os.chdir(current_folder)
+if os.path.dirname(__file__) != '':
+    current_folder = os.path.dirname(__file__)
+    os.chdir(current_folder)
 
 """ Exit if there is no joystick """
 pygame.joystick.init()
@@ -26,10 +27,6 @@ ARM_PORT = int(config['Connection']['ARM_PORT'])
 SCI_HOST = config['Connection']['SCI_HOST']
 SCI_PORT = int(config['Connection']['SCI_PORT'])
 CONT_CONFIG = int(config['Controller']['CONFIG'])
-# if 'Series X' in joystick.get_name():
-#     CONT_TYPE = 'XboxSeriesX'
-# elif 'Xbox 360' in joystick.get_name():
-#     CONT_TYPE = 'Xbox360'
 
 """ Define axes and button numbers for different controllers """
 
@@ -69,7 +66,7 @@ GREEN = (0,255,0)
 BLUE = (0,0,255)
 screen.fill(WHITE)
 timer = Clock()
-tp = util.TextPrint()
+tp = util.TextPrint(40)
 
 """ Other constants and global variables """
 THRESHOLD_LOW = 0.08
@@ -395,8 +392,16 @@ if __name__ == "__main__":
 
         claw_x = coord_u
         claw_y = -coord_v
-
+        tp.reset()
         screen.fill(WHITE)
+        tp.print(screen,"Mode: ",BLACK)
+        if mode == 'drive':
+            tp.print(screen,"Drive",RED)
+        elif arm_installed:
+            tp.print(screen,"Arm",RED)
+        else:
+            tp.print(screen,"Science",RED)
+        tp.println(screen, '',BLACK)
         firstdraw = True
         util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
 

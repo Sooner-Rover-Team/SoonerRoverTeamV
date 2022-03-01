@@ -21,9 +21,11 @@ Servo talonFan, talonDrill, talonCarousel;
 
 // ethernet interface ip address (static ip)
 static byte myip[] = {10, 0, 0, 103};
+//static byte myip[] = {192, 168, 1, 101};
 static int myport = 1003;
 // gateway ip address
 static byte gwip[] = {10, 0, 0, 1};
+//static byte gwip[] = {192, 168, 1, 1};
 // ethernet mac address - must be unique on your network
 static byte mymac[] = {0xAC, 0xDC, 0x0D, 0xAD, 0x00, 0x00};
 // tcp/ip send and receive buffer
@@ -31,16 +33,19 @@ byte Ethernet::buffer[500];
 
 // raw bytes to store from ethernet data
 // they are converted to output ranges in updateServos()
-char myHash = 0;
-char serialHash = 0;
+uint8_t myHash = 0;
+uint8_t serialHash = 0;
 char actuatorDir = 2; // 0 is down, 1 is up, 2 is neither (not moving)
-char actuatorSpeed = 0;
-char drillSpeed = 0;
-char fanSpeed = 0;
-char carouselSpeed = 0;
+int actuatorSpeed = 0;
+int drillSpeed = 0;
+int fanSpeed = 0;
+int carouselSpeed = 0;
+char carouselTurn = 0;
 
+int turnTime = 350;
+char turning = 0;
 
-unsigned long timeOut = 0;
+unsigned long stopTimeout = 0, turnTimeout = 0;
 
 // callback that prints received packets to the serial port
 void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_port, const char *data, uint16_t len)
@@ -79,7 +84,7 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
 
     if (data[1] == DEVICE_ID)
     {
-      if (len != 8)
+      if (len != 9)
       {
 #if DEBUG_MODE == 1
         Serial.println("Drill message is wrong length!");
@@ -91,13 +96,14 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
       drillSpeed = uint8_t(data[4]);
       fanSpeed = uint8_t(data[5]);
       carouselSpeed = uint8_t(data[6]);
+      carouselTurn = uint8_t(data[7]);
 
-      serialHash = uint8_t(data[7]);
-      myHash = (actuatorDir + actuatorSpeed + drillSpeed + fanSpeed) & 0xff;
+      serialHash = uint8_t(data[8]);
+      myHash = (actuatorDir + actuatorSpeed + drillSpeed + fanSpeed + carouselSpeed + carouselTurn) & 0xff;
       if (myHash == serialHash)
       {
         updateServos();
-        timeOut = millis();
+        stopTimeout = millis();
       }
 #if DEBUG_MODE == 1
       else
@@ -157,12 +163,18 @@ void loop()
   // this must be called for ethercard functions to work.
   ether.packetLoop(ether.packetReceive());
 
+  unsigned long curr_time = millis();
+  if (curr_time - turnTimeout >= turnTime && turning) {
+    talonCarousel.write(90);
+    turning = 0;
+  }
   // stop all motors after 1 second of no messages
-  if (millis() - timeOut >= 1000)
+  if (curr_time - stopTimeout >= 1000)
   {
-    timeOut = millis();
+    stopTimeout = millis();
     talonFan.write(90);
     talonDrill.write(90);
+    talonCarousel.write(90);
     analogWrite(PIN_ACTUATOR_UP, 0);
     analogWrite(PIN_ACTUATOR_DOWN, 0);
 
@@ -178,7 +190,7 @@ void updateServos()
   int speedOutput = actuatorSpeed;
 //  if (speedOutput < 0)
 //    speedOutput *= -1;
-  fanSpeed = map(uint8_t(fanSpeed), 0, 255, 90, 6);
+  fanSpeed = map(uint8_t(fanSpeed), 0, 255, 90, 174);
   drillSpeed = map(uint8_t(drillSpeed), 0, 255, 90, 6);
   
 //  speedOutput = map(uint8_t(speedOutput), 0, 255, 0, 255);
@@ -190,7 +202,9 @@ void updateServos()
     Serial.print(" ds: ");
     Serial.print(int(drillSpeed));
     Serial.print(" cs: ");
-    Serial.println(int(carouselSpeed));
+    Serial.print(int(carouselSpeed));
+    Serial.print(" ct: ");
+    Serial.println(int(carouselTurn));
   }
   
 
@@ -217,5 +231,13 @@ void updateServos()
 
   talonFan.write(fanSpeed);
   talonDrill.write(drillSpeed);
-  talonCarousel.write(carouselSpeed);
+  if (millis() - turnTimeout >= turnTime) {
+    if (carouselTurn) {
+      talonCarousel.write(120);
+      turnTimeout = millis();
+      turning = 1;
+    }
+    else 
+      talonCarousel.write(carouselSpeed);
+  }    
 }

@@ -107,17 +107,17 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
     pygame.draw.line(screen, BLACK, (origin_x+claw_x*scale-5, origin_y+claw_y*scale+5), (origin_x+claw_x*scale+5, origin_y+claw_y*scale-5))
 
 class TextPrint(object):
-    def __init__(self):
+    def __init__(self, size):
         self.reset()
-        self.font = pygame.font.Font(None, 20)
+        self.font = pygame.font.Font(None, size)
 
-    def print(self, screen, textString):
-        textBitmap = self.font.render(textString, True, BLACK)
+    def print(self, screen, textString, color):
+        textBitmap = self.font.render(textString, True, color)
         screen.blit(textBitmap, (self.x, self.y))
         self.x += textBitmap.get_width()
         
-    def println(self, screen, textString):
-        self.print(screen, textString)
+    def println(self, screen, textString, color):
+        self.print(screen, textString, color)
         self.y += self.line_height
 
     def reset(self):
