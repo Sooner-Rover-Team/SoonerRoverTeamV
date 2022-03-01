@@ -1,5 +1,6 @@
 from flask import Response, Flask, render_template, request
 import argparse
+import configparser
 from videostream import VideoStream
 from utils import findactivestreams, findrecording, parseindicies, handlecamops, calcwait, timestampframe, log
 import imutils
@@ -143,9 +144,10 @@ def video_feed() -> Response:
 if __name__ == '__main__':
     # construct the argument parser and parse command line arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--ip", type=str, required=True,
+    config = configparser.ConfigParser()
+    ap.add_argument("-i", "--ip", type=str, default=-1,
                     help="ip address of the device")
-    ap.add_argument("-o", "--port", type=int, required=True,
+    ap.add_argument("-o", "--port", type=int, default=-1,
                     help="port number of the server (1024 to 65535)")
     ap.add_argument("-r", "--resolution", type=str, default='640x480',
                     help='resolution of cameras (\'max\' for max resolution)')
@@ -154,6 +156,14 @@ if __name__ == '__main__':
 
     # parse arguments
     args = vars(ap.parse_args())
+
+    if args['ip'] == -1:
+        config.read('config.ini')
+        ip = config['Connection']['HOST']
+        port = config['Connection']['PORT']
+    else:
+        ip = args["ip"]
+        port = args["port"]
 
     # create a list of video streams to reference in generate()
     vslist = []
@@ -183,7 +193,7 @@ if __name__ == '__main__':
                 vslist.append(vs)
 
     # start the flask app
-    app.run(host=args["ip"], port=args["port"], debug=True,
+    app.run(host=ip, port=port, debug=True,
             threaded=True, use_reloader=False)
 
 # release the video stream pointer
