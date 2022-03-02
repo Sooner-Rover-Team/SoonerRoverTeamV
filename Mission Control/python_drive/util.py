@@ -130,15 +130,39 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
                              (origin_y-14.9504*scale)-18.01*scale, 18.01*scale*2, 18.01*scale*2)
         pygame.draw.arc(screen, BLACK, r, -20*pi/180, 45*pi/180)
 
-    pygame.draw.circle(screen, BLACK, (origin_x, origin_y), bicep_len, 1)
-    pygame.draw.circle(screen, BLACK, (origin_x+claw_x*scale, origin_y +
-                     claw_y*scale), forearm_len, 1)
+    # pygame.draw.circle(screen, BLACK, (origin_x, origin_y), bicep_len, 1)
+    # pygame.draw.circle(screen, BLACK, (origin_x+claw_x*scale, origin_y +
+    #                  claw_y*scale), forearm_len, 1)
 
     # claw position
     pygame.draw.line(screen, BLACK, (origin_x+claw_x*scale-5, origin_y +
                      claw_y*scale-5), (origin_x+claw_x*scale+5, origin_y+claw_y*scale+5))
     pygame.draw.line(screen, BLACK, (origin_x+claw_x*scale-5, origin_y +
                      claw_y*scale+5), (origin_x+claw_x*scale+5, origin_y+claw_y*scale-5))
+
+def draw_drive_stuff(screen, leftwheels, rightwheels):
+    w,h = screen.get_size()
+    c_x = w/2
+    c_y =h/2
+    y_spacing = c_y/1.5
+    top_y = c_y - y_spacing
+    left_x = c_x-c_x*.4
+    bar_height = y_spacing*.4
+    bar_width = 60
+    for i in range(6):
+        if i < 3:
+            height = (leftwheels[i] - 126) / -126
+        else:
+            height = (rightwheels[i-3] - 126) / -126
+        if height > 0:
+            color = (abs(height*255),0,0)
+        else:
+            color = (0,abs(height)*255,0)
+        x_coord = left_x + (c_x*.8 if i>2 else 0)
+        y_coord = top_y + y_spacing * (i % 3)
+        bound = pygame.rect.Rect(x_coord - bar_width/2, y_coord - bar_height,bar_width,bar_height*2)
+        pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord+height*bar_height),bar_width)
+        pygame.draw.rect(screen, BLACK, bound, 1, 1)
 
 
 class TextPrint(object):

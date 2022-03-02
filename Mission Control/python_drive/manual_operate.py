@@ -67,6 +67,7 @@ BLUE = (0,0,255)
 screen.fill(WHITE)
 timer = Clock()
 tp = util.TextPrint(40)
+# pygame.event.set_grab(True)
 
 """ Other constants and global variables """
 THRESHOLD_LOW = 0.08
@@ -74,7 +75,7 @@ THRESHOLD_HIGH = 0.15
 FPS = 20
 flash = False
 mode = 'drive'
-arm_installed = False
+arm_installed = True
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -186,6 +187,11 @@ def lights(r,g,b):
     print(msg)
     return msg
 
+def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
+    w,h = screen.get_size()
+    c_x = w/2
+    c_y = h/2
+
 if __name__ == "__main__":
     running = True
     stopsent = False
@@ -210,11 +216,14 @@ if __name__ == "__main__":
                 # switch modes
                 if event.button == SELECT:
                     arm_installed = not arm_installed
-                    print('science/arm swapped')
+                    if arm_installed:
+                        print('arm selected')
+                    else:
+                        print('science selected')
                 if event.button == B_BUTTON:
                     if mode == 'drive':
                         mode = 'operate'
-                        print('mode has been changed to arm')
+                        print('mode has been changed to operate')
                         msg = wheel_message([126]*3,[126]*3)
                         ebox_socket.sendall(msg)
                         print('sent',msg[2:8])
@@ -397,16 +406,18 @@ if __name__ == "__main__":
         tp.print(screen,"Mode: ",BLACK)
         if mode == 'drive':
             tp.print(screen,"Drive",RED)
+            util.draw_drive_stuff(screen,leftwheels, rightwheels)
         elif arm_installed:
             tp.print(screen,"Arm",RED)
+            util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
         else:
             tp.print(screen,"Science",RED)
         tp.println(screen, '',BLACK)
         firstdraw = True
-        util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
 
         pygame.display.flip()
         timer.tick(FPS)
+
 
 pygame.joystick.quit()
 pygame.quit()
