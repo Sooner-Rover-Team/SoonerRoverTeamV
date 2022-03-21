@@ -111,16 +111,17 @@ class ARTracker:
         self.index2 = -1
         bw = image #will hold the black and white image
         # tries converting to b&w using different different cutoffs to find the perfect one for the current lighting
-        for i in range(40, 221, 60):
-            bw = cv2.threshold(image,i,255, cv2.THRESH_BINARY)[1]
+        for i in range(160, 161, 80):
+            bw =image#cv2.threshold(image,i,255, cv2.THRESH_BINARY)[1]
             (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers(bw, self.markerDict)   
 
             if not (self.markerIDs is None):
-                
+                print(self.markerIDs) 
+                print(id1)
                 if id2==-1: #single post
                     self.index1 = -1 
                     # this just checks to make sure that it found the right marker
-                    for i in range(len(self.markerIDs)):  
+                    for i in range(1):#len(self.markerIDs)):  
                         if self.markerIDs[i] == id1:
                             self.index1 = i 
                             break  
@@ -134,7 +135,8 @@ class ARTracker:
                     
                     else:
                         print("Found a marker but was not the correct one") 
-                
+                        return False
+
                 else: #gate post
                     self.index1 = -1
                     self.index2 = -1
@@ -153,7 +155,7 @@ class ARTracker:
                             cv2.waitKey(1)
                         break                        
                      
-            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco                
+            if i == 160:  #did not find any AR markers with any b&w cutoff using aruco                
                 #Checks to see if yolo can find a tag
                 if self.useYOLO:
                     detections = []
