@@ -1,8 +1,8 @@
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-import sys
-sys.path.append('../')
+#import sys
+#sys.path.append('../')
 
 # from gps import gps 
 from time import sleep
@@ -18,4 +18,5 @@ if __name__ == '__main__':
         print(l.latitude)
         print(l.longitude)
         print(l.bearing)
-        sleep(.5)
+        print()
+        sleep(1)

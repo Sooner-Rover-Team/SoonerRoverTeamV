@@ -46,7 +46,7 @@ class Drive:
     #time in milliseconds
     #error in degrees
     #Gets adjusted speeds based off of error and how long its been off (uses p and i)   
-    def getSpeeds(self,speed, error, time, kp = .35, ki=.00001):
+    def getSpeeds(self,speed, error, time, kp = .35, ki=.000035):
         values = [0,0]
 
         #p and i constants if doing a pivot turn
@@ -129,7 +129,7 @@ class Drive:
         #navigates to each location
         for l in locations:
             self.errorAccumulation = 0
-            while self.gps.distance_to(l[0], l[1]) > .0029: #.002km
+            while self.gps.distance_to(l[0], l[1]) > .0025: #.0025km
                 bearingTo = self.gps.bearing_to(l[0], l[1])
                 print(self.gps.distance_to(l[0], l[1]) )
                 self.speeds = self.getSpeeds(self.baseSpeed, bearingTo, 100) #It will sleep for 100ms
@@ -148,7 +148,7 @@ class Drive:
         return False
                 
     def trackARMarker(self, id1, id2=-1):
-        stopDistance = 250 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
+        stopDistance = 350 #stops when 250cm from markers TODO make sure rover doesn't stop too far away with huddlys
         timesNotFound = -1
         self.tracker.findMarker(id1, id2, cameras=1) #Gets and initial angle from the main camera
         self.errorAccumulation = 0
@@ -162,9 +162,9 @@ class Drive:
                 timesNotFound = 0
             elif timesNotFound == -1: #Never seen the tag with the main camera
                 if(math.ceil(int(count/10)/5) % 2 == 1):
-                    self.speeds = [20,-20]
+                    self.speeds = [self.baseSpeed,-self.baseSpeed]
                 else:
-                    self.speeds = [-20,20]
+                    self.speeds = [-self.baseSpeed,self.baseSpeed]
             elif timesNotFound < 15: #Lost the tag for less than 1.5 seconds after seeing it with the main camera
                 timesNotFound += 1
                 print(f"lost tag {timesNotFound} times")
@@ -211,6 +211,11 @@ class Drive:
             #Gets the coords to the point that is 4m infront of the gate posts (get_coordinates expects distance in km)
             coords = self.gps.get_coordinates(self.tracker.distanceToMarker/100000.0+.004, self.tracker.angleToMarker)
             
+            self.speeds = [self.baseSpeed, self.baseSpeed]
+            sleep(5)
+            
+            #TODO: test this more after getting the new GPS
+            '''
             #Rover hasn't been moving for a bit so moves to get correct bearing
             self.speeds = [-self.baseSpeed, -self.baseSpeed]
             self.printSpeeds()
@@ -229,9 +234,7 @@ class Drive:
                 self.speeds = self.getSpeeds(self.baseSpeed, bearingTo, 100) #It will sleep for 100ms
                 sleep(.1) #Sleeps for 100ms
                 self.printSpeeds()
-            
-            pass
-        
+            '''
                         
         
          
