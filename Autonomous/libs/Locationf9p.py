@@ -4,9 +4,14 @@ from math import cos, radians, degrees, sin, atan2, pi, sqrt, asin
 import threading
 
 # Class that computes functions related to location of Rover
+# TODO: Make sure that the current GPS outputs coordinates
+#       in the same format as the swift, and test out 
+#       heading and see if that should be computed
+#       somewhere outside of __parse
 class LocationF9P:
     # To find the device path, run ls -l /dev/serial/by-id/usb-ublox_....(tab complete this)
     # and it will return where it's symlinked to, most likely /dev/ttyACM0
+    # you could probably just use that /dev/serial path too
     def __init__(self, device_path="/dev/ttyACM0"):
         self.device_path = device_path
         self.device_open_file = None
