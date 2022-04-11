@@ -106,8 +106,8 @@ class Drive:
         #Starts the GPS
         self.gps.start_GPS_thread()
         print('Waiting for GPS connection...')
-        while self.gps.all_zero: 
-            continue
+        #while self.gps.all_zero: 
+        #    continue
         print('Connected to GPS')
         
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading

@@ -114,15 +114,14 @@ class ARTracker:
         for i in range(40, 221, 60):
             bw = cv2.threshold(image,i,255, cv2.THRESH_BINARY)[1]
             (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers(bw, self.markerDict)   
-
             if not (self.markerIDs is None):
-                
+                print('', end='') #I have not been able to reproduce an error when I have a print statement here so I'm leaving it in    
                 if id2==-1: #single post
                     self.index1 = -1 
                     # this just checks to make sure that it found the right marker
-                    for i in range(len(self.markerIDs)):  
-                        if self.markerIDs[i] == id1:
-                            self.index1 = i 
+                    for m in range(len(self.markerIDs)):  
+                        if self.markerIDs[m] == id1:
+                            self.index1 = m  
                             break  
                 
                     if self.index1 != -1:

@@ -44,9 +44,9 @@ if __name__ == "__main__":
     mbedPort = int(config['CONFIG']['MBED_PORT'])
 
     rover = Drive.Drive(50, sys.argv)
-    drive(rover, -1)
-    drive(rover, -1)
-    drive(rover, -1)
+#    drive(rover, -1)
+#    drive(rover, -1)
+#    drive(rover, -1)
     drive(rover, 1)
     drive(rover, 2)
     drive(rover, 3)
