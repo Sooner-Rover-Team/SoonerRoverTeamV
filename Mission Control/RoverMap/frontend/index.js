@@ -1,9 +1,15 @@
 var map = L.map('map').setView([38.4065, -110.79147], 13);
 
-L.tileLayer('/tile/{z}/{x}/{y}', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-}).addTo(map);
+let templateString =  '//gibs-{s}.earthdata.nasa.gov/wmts/epsg3031/best/' +
+'{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg';
+
+templateString = '/tile/{z}/{x}/{y}'
+
+console.log(templateString);
+
+L.tileLayer(templateString, {
+    maxZoom: 19
+  }).addTo(map);
 
 
 // Poll for the rover's position every second

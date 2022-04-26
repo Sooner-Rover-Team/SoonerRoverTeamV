@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 
 @app.route("/")
-def serve_index(path):
+def serve_index():
     return send_from_directory('frontend', "index.html")
 
 last_rover_coords = [0, 0]
@@ -17,7 +17,7 @@ def update_rover_coords(lat_lng_array):
 
 @app.route("/tile/<z>/<x>/<y>")
 def serve_tile(z, x, y):
-    tileFilePath = "./tiles/z{},x{},y{}.jpg".format(z,x,y)
+    tileFilePath = os.path.dirname(os.path.abspath(__file__)) + "/tiles/z{},x{},y{}.jpg".format(z,x,y)
     if exists(tileFilePath):
         tileFD = open(tileFilePath, "rb")
         img = tileFD.read()
