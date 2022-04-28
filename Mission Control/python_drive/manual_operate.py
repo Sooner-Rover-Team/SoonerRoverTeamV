@@ -86,10 +86,10 @@ science_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 science_socket.connect((SCI_HOST,SCI_PORT))
 
 """ ARM SHIT GOES HERE """
-CLAW_L_OPEN = 149
-CLAW_L_CLOSED = 87
-CLAW_R_OPEN = 73
-CLAW_R_CLOSED = 28
+CLAW_L_OPEN = 169
+CLAW_L_CLOSED = 110
+CLAW_R_OPEN = 84
+CLAW_R_CLOSED = 34
 clawL = CLAW_L_OPEN
 clawR = CLAW_R_OPEN;
 claw_closed = False
@@ -254,7 +254,7 @@ if __name__ == "__main__":
                                 clawL = CLAW_L_CLOSED
                                 clawR = CLAW_R_CLOSED
                             claw_closed = not claw_closed
-        
+                            
         """ if the joystick is disconnected wait """
         if pygame.joystick.get_count() == 0:
             continue
@@ -335,6 +335,16 @@ if __name__ == "__main__":
 
             coord_u = temp_u;
             coord_v = temp_v;
+
+            if joystick.get_button(L_BUMPER):
+                clawL -= 1 if clawL != CLAW_L_CLOSED else 0
+            elif joystick.get_button(R_BUMPER):
+                clawL += 1 if clawL != CLAW_L_OPEN else 0
+            
+            if joystick.get_hat(0)[1] == 1:
+                clawR -= 1 if clawR != CLAW_R_CLOSED else 0
+            elif joystick.get_hat(0)[1] == -1:
+                clawR += 1 if clawR != CLAW_R_OPEN else 0
                 
             wrist_angle = 127 * theta;
             if (wrist_angle < 10 and wrist_angle > -10):

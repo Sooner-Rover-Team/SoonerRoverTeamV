@@ -1,4 +1,5 @@
-# SoonerRoverTeamV
+![Sooner Rover Team Logo](/Mission_Control/video_streamer/static/logo.png)
+
 This is the fifth repository for the Sooner Rover Team.
 
 ## Active Tasks

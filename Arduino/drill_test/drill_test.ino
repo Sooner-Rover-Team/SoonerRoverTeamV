@@ -4,29 +4,33 @@
 // Currently can control the drill and fan
 
 // Arduino Nano pins to attach Talon controllers to
-#define PIN_S_1 6
-#define PIN_S_2 7
 #define PIN_ACTUATOR_UP 5
 #define PIN_ACTUATOR_DOWN 3
+#define PIN_TALON_FAN 7
+#define PIN_TALON_DRILL 6
+#define PIN_TALON_CAROUSEL 9 
 
 // servo objects
-Servo s1;
-Servo s2;
+Servo talonFan, talonDrill, talonCarousel;
+Servo s1, s2;
 
 // test program vars
 String inString = "";
-Servo* currentServo = &s1;
+Servo* currentServo = &talonDrill;
 bool both = false;
+
 bool actuator = false;
 
 void setup() {
   // setup servos
-  s1.attach(PIN_S_1);
-  s2.attach(PIN_S_2);
+  talonFan.attach(PIN_TALON_FAN);
+  talonDrill.attach(PIN_TALON_DRILL);
+  talonCarousel.attach(PIN_TALON_CAROUSEL);
   
-  s2.write(90);
-  s1.write(90);
-
+  talonFan.write(90);
+  talonDrill.write(90);
+  talonCarousel.write(90);
+  
   // Setup actuator control pins (analog outputs from range (-256, 256) with -256 being 12V to PIN_ACTUATOR_DOWN and 256 being 12V to PIN_ACTUATOR_UP)
   pinMode(PIN_ACTUATOR_UP, OUTPUT);
   pinMode(PIN_ACTUATOR_DOWN, OUTPUT);
@@ -45,6 +49,7 @@ void setup() {
   Serial.println("A = Drill (> 90)");
   Serial.println("B = Fan (> 90)");
   Serial.println("C = Actuator");
+//  Serial.println("D = 
   Serial.println("D = Drill & Fan (> 90)");
 }
 
@@ -84,8 +89,8 @@ void loop() {
 
         if (both)
         {
-          s1.write(temp);
-          s2.write(temp);
+          talonFan.write(temp);
+          talonDrill.write(temp);
         }
         else if (!actuator)
         {
@@ -106,14 +111,14 @@ void loop() {
         {
           both = false;
           actuator = false;
-          currentServo = &s1;
+          currentServo = &talonDrill;
           Serial.println("Selected Drill");
         }
         else if (inString == "B" || inString == "b")
         {
           both = false;
           actuator = false;
-          currentServo = &s2;
+          currentServo = &talonFan;
           Serial.println("Selected Fan");
         }
         else if (inString == "C" || inString == "c")

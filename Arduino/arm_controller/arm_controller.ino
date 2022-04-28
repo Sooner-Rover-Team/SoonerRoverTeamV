@@ -45,8 +45,10 @@ unsigned char shoulder_pos = 135;
 unsigned char elbow_pos = 119;
 char wristTheta_speed = 0;
 char wristPhi_speed = 0;
-unsigned char clawL_pos = 149;
-unsigned char clawR_pos = 73;
+int clawL_pos = 149;
+int clawR_pos = 73;
+
+bool stopped = false;
 
 unsigned char serialHash = 0;
 unsigned char myHash = 81;
@@ -158,8 +160,8 @@ void setup()
   base.attach(BASE_PIN);
   shoulder.attach(SHOULDER_PIN);
   elbow.attach(ELBOW_PIN);
-  clawL.attach(CLAW_L_PIN);
-  clawR.attach(CLAW_R_PIN);
+  clawL.attach(CLAW_L_PIN, 900, 2100);
+  clawR.attach(CLAW_R_PIN, 900, 2100);
 
   base.write(base_speed);
   shoulder.write(shoulder_pos);
@@ -187,9 +189,10 @@ void loop()
 {
   // this must be called for ethercard functions to work.
   ether.packetLoop(ether.packetReceive());
+  delay(20);
 
   // stop all motors after 1 second of no messages
-  if (millis() - timeOut >= 1000)
+  if (millis() - timeOut >= 1000 && !stopped)
   {
     timeOut = millis();
 
@@ -204,9 +207,11 @@ void loop()
     digitalWrite(WRIST_R1_PIN, LOW);
     digitalWrite(WRIST_R2_PIN, LOW);
     analogWrite(WRIST_R_SPEED_PIN, 0);
+    stopped = true;
 
 #if DEBUG_MODE == 1
     Serial.println("Stopped motors");
+    Serial.println(clawL_pos);
 #endif
   }
 }
