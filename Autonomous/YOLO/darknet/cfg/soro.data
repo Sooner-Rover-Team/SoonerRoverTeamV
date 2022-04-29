@@ -1,0 +1,6 @@
+classes = 1
+train = data/soro/1100.txt
+valid = data/soro/362.txt
+names = data/soro.names
+backup = /mydrive/SoroYOLO/training
+
