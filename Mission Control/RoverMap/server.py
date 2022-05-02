@@ -4,11 +4,16 @@ from flask import Flask, send_from_directory, json, Response
 from os.path import exists
 import os
 import threading
+import inspect
 
+class DummyClass: 
+    def nothing():
+        print("nothing")
+
+file_path = os.path.dirname(os.path.abspath(inspect.getsourcefile(DummyClass)))
 
 
 class MapServer:
-
     app = Flask(__name__)
     last_rover_coords = [-1, 0]
     
@@ -19,7 +24,8 @@ class MapServer:
 
         @self.app.route("/tile/<z>/<x>/<y>")
         def serve_tile(z, x, y):
-            tileFilePath = os.path.dirname(os.path.abspath("__file__")) + "/tiles/z{}, x{}, y{}.jpg".format(z,x,y)
+            tileFilePath = file_path + "/tiles/z{}, x{}, y{}.jpg".format(z,x,y)
+            print(f"{file_path}")
             if exists(tileFilePath):
                 tileFD = open(tileFilePath, "rb")
                 img = tileFD.read()
