@@ -1,9 +1,7 @@
-var map = L.map('map').setView([38.4065, -110.79147], 13);
+var map = L.map('map').setView([38.4375, -110.8125], 13);
 
-let templateString =  '//gibs-{s}.earthdata.nasa.gov/wmts/epsg3031/best/' +
-'{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg';
 
-templateString = '/tile/{z}/{x}/{y}'
+let templateString = '/tile/{z}/{x}/{y}'
 
 console.log(templateString);
 
