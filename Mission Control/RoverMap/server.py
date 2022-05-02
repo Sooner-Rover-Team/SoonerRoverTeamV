@@ -19,7 +19,7 @@ class MapServer:
 
         @self.app.route("/tile/<z>/<x>/<y>")
         def serve_tile(z, x, y):
-            tileFilePath = os.path.dirname(os.path.abspath(__file__)) + "/tiles/z{}, x{}, y{}.jpg".format(z,x,y)
+            tileFilePath = os.path.dirname(os.path.abspath("__file__")) + "/tiles/z{}, x{}, y{}.jpg".format(z,x,y)
             if exists(tileFilePath):
                 tileFD = open(tileFilePath, "rb")
                 img = tileFD.read()
