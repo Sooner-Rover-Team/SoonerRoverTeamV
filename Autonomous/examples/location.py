@@ -6,10 +6,10 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # from gps import gps 
 from time import sleep
-from libs import Locationf9p
+from libs import Location
 
 if __name__ == '__main__':
-    l = Locationf9p.LocationF9P()
+    l = Location.Location('10.0.0.222','55556')
     print('starting gps')
     l.start_GPS()
     l.start_GPS_thread()
