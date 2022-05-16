@@ -1,8 +1,15 @@
 from threading import Thread
+from threading import Timer
 import configparser
 import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import math
 from time import sleep
+from nis import maps
+
+import sys
+sys.path.append('../../Mission Control/RoverMap/')
+from server import MapServer
 
 from libs import UDPOut
 from libs import Location
@@ -14,6 +21,13 @@ class Drive:
         self.baseSpeed = baseSpeed
         self.tracker = ARTracker.ARTracker(cameras)
         
+        #Starts everything needed by the map
+        self.mapServer = MapServer()
+        self.mapServer.register_routes()
+        self.mapServer.start(debug=False)
+        self.startMap(self.updateMap, .5)
+        sleep(.1)
+
         #sets up the parser
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(os.path.dirname(__file__) + '/../config.ini')
@@ -34,7 +48,20 @@ class Drive:
         t = Thread(target=self.sendSpeed, name=('send wheel speeds'), args=())
         t.daemon = True
         t.start()
-    
+
+        
+    def startMap(self, func, seconds):
+        def func_wrapper():
+            self.startMap(func, seconds)
+            func()
+        t = Timer(seconds, func_wrapper)
+        t.start()
+        return t
+
+    def updateMap(self):
+        self.mapServer.update_rover_coords([self.gps.latitude, self.gps.longitude])
+
+
     #Every 100ms, send the current left and right wheel speeds to the mbeds
     def sendSpeed(self):
         while self.running:
@@ -106,8 +133,8 @@ class Drive:
         #Starts the GPS
         self.gps.start_GPS_thread()
         print('Waiting for GPS connection...')
-        #while self.gps.all_zero: 
-        #    continue
+        while self.gps.all_zero: 
+            continue
         print('Connected to GPS')
         
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading

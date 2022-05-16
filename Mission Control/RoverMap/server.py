@@ -16,6 +16,7 @@ file_path = os.path.dirname(os.path.abspath(inspect.getsourcefile(DummyClass)))
 class MapServer:
     app = Flask(__name__)
     last_rover_coords = [-1, 0]
+    debug = True
     
     def register_routes(self):
         @self.app.route("/")
@@ -25,7 +26,8 @@ class MapServer:
         @self.app.route("/tile/<z>/<x>/<y>")
         def serve_tile(z, x, y):
             tileFilePath = file_path + "/tiles/z{}, x{}, y{}.jpg".format(z,x,y)
-            print(f"{file_path}")
+            if self.debug:
+                print(f"{file_path}")
             if exists(tileFilePath):
                 tileFD = open(tileFilePath, "rb")
                 img = tileFD.read()
@@ -37,7 +39,8 @@ class MapServer:
 
         @self.app.route("/roverCoords")
         def return_rover_coords():
-            print(f"lastcoords {self.last_rover_coords}")
+            if self.debug:
+                print(f"lastcoords {self.last_rover_coords}")
             return json.dumps(self.last_rover_coords)
 
         @self.app.route("/<path:path>")
@@ -46,11 +49,14 @@ class MapServer:
 
     
     def update_rover_coords(self, lat_lng_array):
-        print("updating rover coords")
+        if self.debug:
+            print("updating rover coords")
         self.last_rover_coords = lat_lng_array
-        print(f"updated {self.last_rover_coords}")
+        if self.debug:
+            print(f"updated {self.last_rover_coords}")
 
-    def start(self):
+    def start(self, debug = True):
+        self.debug=debug
         print("starting server")
 
         def thread_target():
