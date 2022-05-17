@@ -2,9 +2,9 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 import configparser
-import os
 import sys
 
+import os
 '''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
 sys.path.append(darknetPath)
@@ -18,7 +18,7 @@ class ARTracker:
     #Cameras should be a list of file paths to cameras that are to be used
     #set write to True to write to disk what the cameras are seeing
     #set useYOLO to True to use yolo when attempting to detect the ar tags
-    def __init__(self, cameras, write=False, useYOLO = False):
+    def __init__(self, cameras, write=False, useYOLO = False, configFile="config.ini"):
         self.write=write
         self.distanceToMarker = -1
         self.angleToMarker = -999.9
@@ -29,7 +29,13 @@ class ARTracker:
         
         # Open the config file
         config = configparser.ConfigParser(allow_no_value=True)
-        config.read(os.path.dirname(__file__) + '/../config.ini')
+        if not config.read(configFile):
+            print(f"ERROR OPENING AR CONFIG:", end="")
+            if os.path.isabs(configFile):
+                print(configFile)
+            else:
+                print("{os.getcwd()}/{configFile}")
+            exit(-2)
 
         # Set variables from the config file
         self.degreesPerPixel = float(config['ARTRACKER']['DEGREES_PER_PIXEL'])

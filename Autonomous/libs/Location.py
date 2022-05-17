@@ -1,10 +1,12 @@
-import sys
-sys.path.append('../')
+#import sys
+#sys.path.append('../')
 from gps import gps
 from math import cos, radians, degrees, sin, atan2, pi, sqrt, asin
 from threading import Thread
 from time import sleep
 
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Class that computes functions related to location of Rover
 class Location:
     def __init__(self, ip, port):
