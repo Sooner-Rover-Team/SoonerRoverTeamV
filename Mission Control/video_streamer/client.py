@@ -104,7 +104,7 @@ def generate():
         if len(framelist) == 0:
             continue
 
-        # resize each frame to 600
+        # resize each frame
         resizedlist: list = []
         for frame in framelist:
             resizedlist.append(imutils.resize(frame, width=framesize))
@@ -149,7 +149,7 @@ if __name__ == '__main__':
                     help="ip address of the device")
     ap.add_argument("-o", "--port", type=int, default=-1,
                     help="port number of the server (1024 to 65535)")
-    ap.add_argument("-r", "--resolution", type=str, default='640x480',
+    ap.add_argument("-r", "--resolution", type=str, default='max',
                     help='resolution of cameras (\'max\' for max resolution)')
     ap.add_argument("-s", "--source", type=str, default='-1',
                     help='indicies of cameras to use')
