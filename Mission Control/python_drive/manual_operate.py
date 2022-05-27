@@ -164,6 +164,7 @@ def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed, caro
 """ wheel toggle message """
 def toggle_wheels():
     msg = bytearray([0x23,0x01])
+    print('wheels toggled')
     return msg
 
 """ check if stop is being sent to the wheels"""
@@ -195,6 +196,8 @@ def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
 if __name__ == "__main__":
     running = True
     stopsent = False
+    # halt will override stopsent to make it stop moving no matter what
+    halt = False
     leftwheels = [126] * 3
     rightwheels = [126] * 3
     while(running):
@@ -239,6 +242,9 @@ if __name__ == "__main__":
                         else:
                             msg = lights(0,0,255)
                         flash = not flash
+                        ebox_socket.sendall(msg)
+                    if event.button == X_BUTTON:
+                        msg = toggle_wheels()
                         ebox_socket.sendall(msg)
                 else:
                     if arm_installed:
@@ -294,11 +300,17 @@ if __name__ == "__main__":
             if joystick.get_button(R_BUMPER):
                 leftwheels[0:2] = [126] * 2
                 rightwheels[0:2] = [126] * 2
+            if joystick.get_button(L_BUMPER) and joystick.get_button(R_BUMPER):
+                halt = True
+                leftwheels[0:3] = [126] * 3
+                rightwheels[0:3] = [126] * 3
+            else:
+                halt = False
 
             data = wheel_message(leftwheels, rightwheels)
 
             if (isstopped(leftwheels,rightwheels)):
-                if not stopsent:
+                if not stopsent or halt:
                     print('sent',data[2:8])
                     ebox_socket.sendall(data)
                     stopsent = True
