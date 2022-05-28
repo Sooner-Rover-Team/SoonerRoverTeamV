@@ -49,8 +49,7 @@ class VideoStream:
         currenttime: datetime.datetime = datetime.datetime.now()
         self.filename = './recordings/{}_{}.avi'.format(
             currenttime.strftime("%Y%m%d_%H-%M-%S"), self.name)
-        self.writer = cv2.VideoWriter(self.filename,
-                                      cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), self.fps, (self.width, self.height))
+        self.writer = cv2.VideoWriter(self.filename, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), self.fps, (self.width, self.height))
 
         # saves the index of the webcam for relaunching
         self.src = src
