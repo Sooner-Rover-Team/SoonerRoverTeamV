@@ -194,6 +194,7 @@ if __name__ == "__main__":
     halt = False
     leftwheels = [126] * 3
     rightwheels = [126] * 3
+    ebox_socket.sendall(lights(0, 0, 255))
     while(running):
         """ check all button events """
         for event in pygame.event.get():
@@ -228,6 +229,7 @@ if __name__ == "__main__":
                     else:
                         mode = 'drive'
                         print('mode has been changed to drive')
+                        ebox_socket.sendall(lights(0,0,255))
                 if mode == 'drive':
                     if event.button == A_BUTTON:
                         print('lights')
