@@ -14,6 +14,7 @@ if os.path.dirname(__file__) != '':
 """ Exit if there is no joystick """
 pygame.joystick.init()
 if pygame.joystick.get_count() == 0:
+    print("no joystick found, exiting")
     exit()
 joystick = pygame.joystick.Joystick(0)
 print('Found',joystick.get_name())
@@ -86,12 +87,6 @@ science_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 science_socket.connect((SCI_HOST,SCI_PORT))
 
 """ ARM SHIT GOES HERE """
-CLAW_L_OPEN = 169
-CLAW_L_CLOSED = 110
-CLAW_R_OPEN = 84
-CLAW_R_CLOSED = 34
-clawL = CLAW_L_OPEN
-clawR = CLAW_R_OPEN;
 claw_closed = False
 coord_u = 18.5;       # wrist position
 coord_v = 9.5;
@@ -133,7 +128,7 @@ def wheel_message(leftwheels, rightwheels):
     return msg
 
 """ make an arm message """
-def arm_messge(claw_l, claw_r, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle):
+def arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle):
     out = []
     out.append(255)
     out.append(1)
@@ -142,9 +137,8 @@ def arm_messge(claw_l, claw_r, base_rotation, shoulder_length, elbow_length, wri
     out.append(elbow_length)
     out.append(int(wrist_angle) & 0xff)
     out.append(int(wrist_rotation) & 0xff)
-    out.append(claw_l)
-    out.append(claw_r)
-    out.append(int(sum(out[2:9])) & 0xff)
+    out.append(claw_dir)
+    out.append(int(sum(out[2:8])) & 0xff)
     return out
 
 """ make a science message """
@@ -164,6 +158,7 @@ def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed, caro
 """ wheel toggle message """
 def toggle_wheels():
     msg = bytearray([0x23,0x01])
+    print('wheels toggled')
     return msg
 
 """ check if stop is being sent to the wheels"""
@@ -195,6 +190,8 @@ def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
 if __name__ == "__main__":
     running = True
     stopsent = False
+    # halt will override stopsent to make it stop moving no matter what
+    halt = False
     leftwheels = [126] * 3
     rightwheels = [126] * 3
     while(running):
@@ -240,19 +237,16 @@ if __name__ == "__main__":
                             msg = lights(0,0,255)
                         flash = not flash
                         ebox_socket.sendall(msg)
+                    if event.button == X_BUTTON:
+                        msg = toggle_wheels()
+                        ebox_socket.sendall(msg)
                 else:
                     if arm_installed:
                         if event.button == X_BUTTON:
                             print('alt config')
                             alt_arm_config = not alt_arm_config
                         elif event.button == A_BUTTON:
-                            print('clamp')
-                            if claw_closed:
-                                clawL = CLAW_L_OPEN
-                                clawR = CLAW_R_OPEN
-                            else:
-                                clawL = CLAW_L_CLOSED
-                                clawR = CLAW_R_CLOSED
+                            print('clamp (does nothing lmao)')
                             claw_closed = not claw_closed
                             
         """ if the joystick is disconnected wait """
@@ -294,11 +288,17 @@ if __name__ == "__main__":
             if joystick.get_button(R_BUMPER):
                 leftwheels[0:2] = [126] * 2
                 rightwheels[0:2] = [126] * 2
+            if joystick.get_button(L_BUMPER) and joystick.get_button(R_BUMPER):
+                halt = True
+                leftwheels[0:3] = [126] * 3
+                rightwheels[0:3] = [126] * 3
+            else:
+                halt = False
 
             data = wheel_message(leftwheels, rightwheels)
 
             if (isstopped(leftwheels,rightwheels)):
-                if not stopsent:
+                if not stopsent or halt:
                     print('sent',data[2:8])
                     ebox_socket.sendall(data)
                     stopsent = True
@@ -337,14 +337,11 @@ if __name__ == "__main__":
             coord_v = temp_v;
 
             if joystick.get_button(L_BUMPER):
-                clawL -= 1 if clawL != CLAW_L_CLOSED else 0
+                claw_dir = 0
             elif joystick.get_button(R_BUMPER):
-                clawL += 1 if clawL != CLAW_L_OPEN else 0
-            
-            if joystick.get_hat(0)[1] == 1:
-                clawR -= 1 if clawR != CLAW_R_CLOSED else 0
-            elif joystick.get_hat(0)[1] == -1:
-                clawR += 1 if clawR != CLAW_R_OPEN else 0
+                claw_dir = 2
+            else:
+                claw_dir = 1
                 
             wrist_angle = 127 * theta;
             if (wrist_angle < 10 and wrist_angle > -10):
@@ -363,7 +360,7 @@ if __name__ == "__main__":
                 base_rotation = 90
 
             # send the data
-            out = arm_messge(clawL, clawR, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
+            out = arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
             print(out)
             arm_socket.sendall(bytearray(out));
         # send science package messages
