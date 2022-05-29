@@ -4,13 +4,26 @@ import sys
 import configparser
 from libs import UDPOut
 from libs import Drive
+import threading
+from time import sleep
 
 mbedIP='10.0.0.101'
 mbedPort=1001
 
+flashing = False
+
+def flash():
+    while flashing:
+        UDPOut.sendLED(mbedIP, mbedPort, 'g')
+        sleep(.2)
+        UDPOut.sendLED(mbedIP, mbedPort, 'o')
+        sleep(.2)
+
+
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
 def drive(rover, id1, id2=-1):
+    global flashing
     locations = []
     while True:
         print("Enter Lat Lon: ", end="")
@@ -22,13 +35,18 @@ def drive(rover, id1, id2=-1):
             break
        
         locations.append(coords)
-
+    
+    flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
     found = rover.driveAlongCoordinates(locations,id1, id2)
     
     if id1 != -1:
         rover.trackARMarker(id1, id2)
-    UDPOut.sendLED(mbedIP, mbedPort, 'g')
+    
+    flashing=True
+    lights = threading.Thread(target=flash)
+    lights.start()
+    #UDPOut.sendLED(mbedIP, mbedPort, 'g')
 
 if __name__ == "__main__":
     os.chdir(path)

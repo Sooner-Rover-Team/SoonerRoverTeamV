@@ -143,8 +143,8 @@ class Drive:
         #Starts the GPS
         self.gps.start_GPS_thread()
         print('Waiting for GPS connection...')
-        while self.gps.all_zero: 
-            continue
+        #while self.gps.all_zero: 
+        #    continue
         print('Connected to GPS')
         
         #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading
@@ -192,13 +192,13 @@ class Drive:
            
         count = 0
         #Centers the middle camera with the tag
-        while self.tracker.angleToMarker > 18 or self.tracker.angleToMarker < -17:
+        while self.tracker.angleToMarker > 14 or self.tracker.angleToMarker < -14:
             if self.tracker.findMarker(id1, id2, cameras=1): #Only looking with the center camera right now
                 if timesNotFound == -1:
                     self.speeds = [0,0]
                     sleep(.5)
                     self.speeds = [self.baseSpeed, self.baseSpeed]
-                    sleep(1)
+                    sleep(.8)
                     self.speeds = [0,0]
                 else:
                     self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
