@@ -3,7 +3,7 @@ import cv2.aruco as aruco
 import numpy as np
 import configparser
 import sys
-
+from time import sleep
 import os
 '''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
@@ -72,14 +72,25 @@ class ARTracker:
         # Initialize cameras
         self.caps=[]
         for i in range(0, len(self.cameras)):
-            self.caps.append(cv2.VideoCapture(self.cameras[i]))
-            if not self.caps[i].isOpened():
-                print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!Camera ", i, " did not open!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            self.caps[i].set(cv2.CAP_PROP_FRAME_WIDTH, self.frameWidth)
-            self.caps[i].set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
-            self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
-            self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
-    
+            #Makes sure the camera actually connects
+            while True:
+                cam = cv2.VideoCapture(self.cameras[i])
+                if not cam.isOpened():
+                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!Camera ", i, " did not open!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    cam.release()
+                    continue
+                cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
+                cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.frameWidth)
+                cam.set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
+                cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
+                #ret, testIm =  self.caps[i].read()[0]:
+                if not cam.read()[0]:
+                    cam.release()
+                else:
+                    self.caps.append(cam)
+                    break
+
+
     #helper method to convert YOLO detections into the aruco corners format
     def _convertToCorners(self,detections, numCorners):
         corners = []
