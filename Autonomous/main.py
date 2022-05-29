@@ -5,8 +5,8 @@ import configparser
 from libs import UDPOut
 from libs import Drive
 
-mbedIP='0.0.0.0'
-mbedPort=80
+mbedIP='10.0.0.101'
+mbedPort=1001
 
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 #    drive(rover, -1)
 #    drive(rover, -1)
 #    drive(rover, -1)
-    drive(rover, 1)
+   # drive(rover, 1)
     drive(rover, 2)
-    drive(rover, 3)
+   # drive(rover, 3)
     drive(rover, 4,5)

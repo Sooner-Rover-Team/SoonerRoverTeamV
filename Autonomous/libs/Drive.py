@@ -78,7 +78,7 @@ class Drive:
 
         #p and i constants if doing a pivot turn
         if speed == 0:
-            kp = .7
+            kp = .9
             ki = .001
 
         #Updates the error accumulation
@@ -92,8 +92,8 @@ class Drive:
         min = speed  - 30
         max = speed + 30
         if speed == 0:
-            max += 30
-            min -= 30
+            max += 40
+            min -= 40
         if max > 90:
             max=90
         if min < -90:
@@ -119,7 +119,17 @@ class Drive:
             values[1] = -10
         elif values[1] > 0 and values[1] < 10:
             values[1] = 10
-            
+        
+        if values[0] <= 0 and values[0] > -40 and speed == 0:
+            values[0] = -40
+        elif values[0] > 0 and values[0] < 40 and speed == 0:
+            values[0] = 40
+        
+        if values[1] <= 0 and values[1] > -40 and speed == 0:
+            values[1] = -40
+        elif values[1] > 0 and values[1] < 40 and speed == 0:
+            values[1] = 40
+    
         return values
         
     #Cleaner way to print out the wheel speeds
@@ -182,23 +192,31 @@ class Drive:
            
         count = 0
         #Centers the middle camera with the tag
-        while self.tracker.angleToMarker > 20 or self.tracker.angleToMarker < -18:
+        while self.tracker.angleToMarker > 18 or self.tracker.angleToMarker < -17:
             if self.tracker.findMarker(id1, id2, cameras=1): #Only looking with the center camera right now
-                self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
+                if timesNotFound == -1:
+                    self.speeds = [0,0]
+                    sleep(.5)
+                    self.speeds = [self.baseSpeed, self.baseSpeed]
+                    sleep(1)
+                    self.speeds = [0,0]
+                else:
+                    self.speeds = self.getSpeeds(0, self.tracker.angleToMarker, 100)
                 print(self.tracker.angleToMarker, " ", self.tracker.distanceToMarker)
                 timesNotFound = 0
             elif timesNotFound == -1: #Never seen the tag with the main camera
-                if(math.ceil(int(count/10)/5) % 2 == 1):
-                    self.speeds = [self.baseSpeed,-self.baseSpeed]
+                if(math.ceil(int(count/20)/5) % 2 == 1):
+                    self.speeds = [self.baseSpeed+5,-self.baseSpeed-5]
                 else:
-                    self.speeds = [-self.baseSpeed,self.baseSpeed]
+                    self.speeds = [-self.baseSpeed-5,self.baseSpeed+5]
             elif timesNotFound < 15: #Lost the tag for less than 1.5 seconds after seeing it with the main camera
                 timesNotFound += 1
                 print(f"lost tag {timesNotFound} times")
             else:
                 self.speeds = [0,0]
                 print("lost it") #TODO this is bad
-                return False
+                timesNotFound = -1
+                #return False
             self.printSpeeds()
             sleep(.1)
             count+=1
@@ -214,11 +232,11 @@ class Drive:
                 markerFound = self.tracker.findMarker(id1, cameras = 1) #Looks for the tag
                 
                 if self.tracker.distanceToMarker > stopDistance:
-                    self.speeds = self.getSpeeds(self.baseSpeed, self.tracker.angleToMarker, 100, kp = .5, ki = .0001)
+                    self.speeds = self.getSpeeds(self.baseSpeed-8, self.tracker.angleToMarker, 100, kp = .5, ki = .0001)
                     timesNotFound = 0
                     print(f"Tag is {self.tracker.distanceToMarker}cm away at {self.tracker.angleToMarker} degrees")
                     
-                elif self.tracker.distanceToMarker == -1 and timesNotFound < 15:
+                elif self.tracker.distanceToMarker == -1 and timesNotFound < 10:
                     timesNotFound += 1
                     print(f"lost tag {timesNotFound} times")
                     
