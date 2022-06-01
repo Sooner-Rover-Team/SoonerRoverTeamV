@@ -21,6 +21,8 @@ print('Found',joystick.get_name())
 
 config = configparser.ConfigParser()
 config.read('./config.ini')
+USING_BRIDGE = config.getboolean('Connection', 'USING_BRIDGE')
+BRIDGE_HOST = config['Connection']['BRIDGE_HOST']
 EBOX_HOST = config['Connection']['EBOX_HOST']
 EBOX_PORT = int(config['Connection']['EBOX_PORT'])
 ARM_HOST = config['Connection']['ARM_HOST']
@@ -80,11 +82,16 @@ arm_installed = True
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-ebox_socket.connect((EBOX_HOST,EBOX_PORT))
 arm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-arm_socket.connect((ARM_HOST,ARM_PORT))
 science_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-science_socket.connect((SCI_HOST,SCI_PORT))
+if USING_BRIDGE:
+    ebox_socket.connect((BRIDGE_HOST,EBOX_PORT))
+    arm_socket.connect((BRIDGE_HOST,ARM_PORT))
+    science_socket.connect((BRIDGE_HOST,SCI_PORT))
+else:
+    ebox_socket.connect((EBOX_HOST,EBOX_PORT))
+    arm_socket.connect((ARM_HOST,ARM_PORT))
+    science_socket.connect((SCI_HOST,SCI_PORT))
 
 """ ARM SHIT GOES HERE """
 claw_closed = False

@@ -2,16 +2,17 @@ from flask import Response, Flask, render_template, request
 import argparse
 import configparser
 from videostream import VideoStream
-from utils import findactivestreams, findrecording, parseindicies, handlecamops, calcwait, timestampframe, log
+from utils import stream_info, findrecording, parseindicies, handlecamops, calcwait, timestampframe, log
 import imutils
 from numpy import ndarray as Frame
 import cv2
 import time
+import os
 
 # global variables to keep track of encoding quality and the targeted time between frames
 encodingquality = 50
 targetfps = 30	 # 30 FPS as a default
-targetwait = 1000/targetfps  # in milliseconds
+target_wait = 1000/targetfps  # in milliseconds
 maxframesize = None  # the max width of the camera frame
 framesize = 640  # 600px width default
 videowidth = 600  # width of html video element
@@ -21,12 +22,13 @@ MAX_CAMERAS = 10 # number of cameras to try opening if none are defined
 app: Flask = Flask(__name__)
 
 
+
 @app.route("/", methods=['GET', 'POST'])
 def index():
     # define the root url to be index.html
     # in other words, when the user accesses http://[ip]:[port]/
     # they will see index.html
-    global encodingquality, targetwait, targetfps, framesize, videowidth, maxframesize
+    global encodingquality, target_wait, targetfps, framesize, videowidth, maxframesize
     if 'zoomslider' in request.form:
         videowidth = int(request.form['zoomslider'])
     # add button handler for the quality selector
@@ -36,7 +38,7 @@ def index():
     # add button handler for the FPS buttons
     for i in [30, 20, 15, 12, 10, 8, 5, 4, 3, 2, 1]:
         if 'fps_{}'.format(i) in request.form:
-            targetwait = 1000/i
+            target_wait = 1000/i
             targetfps = i
 
     # add button handler for the frame size slider
@@ -44,22 +46,21 @@ def index():
         framesize = int(request.form['sizeslider'])
 
     # find active streams for limiting new streams
-    activestreams: int = findactivestreams(vslist)
-    recordingstreams: int = findrecording(vslist)
+    recordingstreams, activestreams, maxframesize = stream_info(vslist)
+    
     camerasconnected: int = len(vslist)
     handlecamops(vslist, request, activestreams,
                  recordingstreams, camerasconnected)
 
     # find number of active video streams for rendering
-    activestreams = findactivestreams(vslist)
-    recordingstreams = findrecording(vslist)
+    recordingstreams, activestreams, maxframesize = stream_info(vslist)
 
     # return the rendered template
     return render_template("index.html",
                            camerasconnected=camerasconnected,
                            activestreams=activestreams,
                            encodingquality=encodingquality,
-                           responsewait=targetwait,
+                           responsewait=target_wait,
                            fps=targetfps,
                            recordingstreams=recordingstreams,
                            framesize=framesize,
@@ -75,30 +76,17 @@ def generate():
 
     # declare variables for calculating time differences
     lastwait = 0
-    lasttime = time.time()
+    last_time = time.perf_counter_ns()/1_000_000
 
     # loop over frames from the output stream
     while True:
-        # find difference in times between iterations
-        currenttime = time.time()  # in seconds
-        difference = (currenttime-lasttime)*1000  # in milliseconds
-        lasttime = currenttime
-
-        # calculate the projected time this function will take to execute
-        calculatedwait = calcwait(
-            difference, targetwait, lastwait)  # in milliseconds
-        lastwait = calculatedwait
-
-        # debugging stuff, dont delete yet lol
-        # log('difference is ' + str(difference) + 'ms, trying to wait ' + str(targetwait) + 'ms, waiting ' + str(calculatedwait) + 'ms')
-
-        time.sleep(calculatedwait/1000)  # sleep takes an argument in seconds
-
         # read a frame from each vs in vslist and add it
         # to framelist if it is readable
         for vs in vslist:
             if vs.isreadable():
-                framelist.append(vs.read())
+                frame = vs.read()
+                framelist.append(frame)
+                # print(frame.shape)
 
         # continue if there are no frames to read
         if len(framelist) == 0:
@@ -107,7 +95,7 @@ def generate():
         # resize each frame to 600
         resizedlist: list = []
         for frame in framelist:
-            resizedlist.append(imutils.resize(frame, width=framesize))
+            resizedlist.append(imutils.resize(frame, height=framesize))
 
         # merge each of the three frames into one image
         mergedim: Frame = cv2.hconcat(resizedlist)
@@ -128,6 +116,18 @@ def generate():
         if not flag:
             continue
 
+        # find difference in times between iterations
+        current_time = time.perf_counter_ns()/1_000_000 # in milliseconds
+        # difference = (currenttime-lasttime)*1000  # in milliseconds
+        future_time = last_time + target_wait
+        calculated_wait = future_time - current_time if future_time - current_time > 0 else 0
+        last_time = current_time
+
+        # debugging stuff, dont delete yet lol
+        # log('difference is ' + str(current_time - last_time) + 'ms, trying to wait ' + str(target_wait) + 'ms, waiting ' + str(calculated_wait) + 'ms')
+
+        time.sleep(calculated_wait/1000)  # sleep takes an argument in seconds
+
         # yield the output frame in the byte format
         yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
               bytearray(encodedimage) + b'\r\n')
@@ -142,6 +142,10 @@ def video_feed() -> Response:
 
 # check to see if this is the main thread of execution
 if __name__ == '__main__':
+    """ Change the current directory so config loads right """
+    if os.path.dirname(__file__) != '':
+        current_folder = os.path.dirname(__file__)
+        os.chdir(current_folder)
     # construct the argument parser and parse command line arguments
     ap = argparse.ArgumentParser()
     config = configparser.ConfigParser()
