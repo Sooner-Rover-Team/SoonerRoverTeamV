@@ -6,7 +6,9 @@ import time
 import os
 from numpy import ndarray as Frame
 from utils import calcwait, timestampframe, parseresolution, log
+# from imutils import rotate
 
+ROTATE_ENUM = [0, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]
 
 class VideoStream:
     # initialize self with defined source and fps
@@ -59,6 +61,8 @@ class VideoStream:
         if self.fps != 0:
             self.waittime = 1000/self.fps
 
+        self.rotation = 0
+
     def start(self) -> None:
         # create a new thread to continuously call update() and read frames
         if self.stopped is True:
@@ -81,7 +85,13 @@ class VideoStream:
 
     def read(self) -> Frame:
         # return the most recent frame grabbed from the camera
-        return self.frame
+        # rotate the frame first if need be
+        if self.rotation != 0:
+            rotate_val = ROTATE_ENUM[self.rotation]
+            frame = cv2.rotate(self.frame, rotate_val)
+            return frame
+        else:
+            return self.frame
 
     def stop(self) -> None:
         # set stopped to True which will halt the thread
@@ -114,13 +124,13 @@ class VideoStream:
         if os.path.exists(self.filename) and os.stat(self.filename).st_size < 10000:
             os.remove(self.filename)
 
-    def relaunch(self) -> None:
+    def relaunch(self, res='max') -> None:
         # releases old VideoCapture object and creates a new one
         # use this if there's a hardware error with the camera such
         # as it being unplugged while the program is running
-        log('relaunch has been called')
+        log('relaunch has been called with res ' + str(res))
         self.release()
-        self.__init__(self.src, self.name)
+        self.__init__(self.src, self.name, res)
 
     def recordstart(self) -> None:
         # starts the thread that handles recording
@@ -133,6 +143,9 @@ class VideoStream:
             t.start()
         else:
             log('recording has already started')
+
+    def rotate(self):
+        self.rotation = (self.rotation + 1) % 4
 
     def record(self) -> None:
         # target function to grab a frame from the camera after a set amount of time

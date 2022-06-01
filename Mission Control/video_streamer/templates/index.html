@@ -31,16 +31,13 @@
   <form method="post" action='/'>
     <img src={{url_for('static',filename="logo.png" )}} style="width: 200px;">
     <div>
-      <img id="videoframe" src="{{ url_for('video_feed') }}" style="width: {{videowidth*activestreams}}px;">
-    </div>
-    <div>
-      Cameras Connected: {{ camerasconnected }}
-      Active Streams: {{ activestreams }}
-    </div>
-    <div>
-      Zoom: <input type="range" id="zoomslider" name="zoomslider" min="100" value="{{videowidth}}" max="{{maxframesize}}" >
+      Zoom: <input type="range" id="zoomslider" name="zoomslider" min="100" value="{{videowidth}}" max="{{maxframesize*2}}" >
       <span id="zoomvalue">{{ videowidth }}</span>px
       <button id='zoomtoframesize'>Same as Frame Size</button>
+
+    </div>
+    <div>
+      <img id="videoframe" src="{{ url_for('video_feed') }}" style="width: {{videowidth*activestreams}}px;">
       <script>
         const zoomslider = document.getElementById('zoomslider');
         const zoomvalue = document.getElementById('zoomvalue');
@@ -55,9 +52,15 @@
         zoomslider.addEventListener('change', () => {
           zoomvalue.textContent = zoomslider.value
           videoframe.style.width = zoomslider.value * {{activestreams}} + 'px'
+          // videoframe.style.width = screen.width + 'px'
         })
       </script>
     </div>
+    <div>
+      Cameras Connected: {{ camerasconnected }}
+      Active Streams: {{ activestreams }}
+    </div>
+    
     <div>
       Quality of Encoded Image:
       <input type="range" min="1" max="100" value="{{ encodingquality }}" id="qualityslider" name="qualityslider">
@@ -105,6 +108,9 @@
       <input type="submit" name="recordvs{{i+1}}" value="Record" {%if recordingstreams[i]%}
         style="background-color: red;" {%endif%}>
       <input type="submit" name="movetoleft{{i+1}}" value="Move to Left">
+      <input type="submit" name="rotate{{i+1}}" value="Rotate 90 Degrees">
+      New resolution: 
+      <input type="text" name="relaunchvsres{{i+1}}">
       <!-- <input type="submit" name="stoprecordvs{{i+1}}" value="Stop Recording VS {{i+1}}"> -->
 
     </div>
