@@ -173,7 +173,7 @@ def draw_science_stuff(screen, speeds, tp):
     left_x = c_x - x_spacing
     bar_height = h/4
     bar_width = 60
-    for i in range(len(speeds)):
+    for i in range(len(speeds)-1):
         s = speeds[i]
         x_coord = left_x + i * x_spacing
         y_coord = c_y
@@ -194,6 +194,15 @@ def draw_science_stuff(screen, speeds, tp):
             pygame.draw.line(screen, color, (x_coord, y_coord+bar_height), (x_coord, y_coord+bar_height-height*bar_height),bar_width)
 
         pygame.draw.rect(screen, BLACK, bound, 1, 1)
+    s = speeds[3]
+    width = (s - 90) / 30
+    bound = pygame.rect.Rect(left_x, c_y+bar_height*1.2,x_spacing*2,bar_width)
+    if width != 0:
+        pygame.draw.line(screen, GREEN, (c_x,c_y+bar_height*1.2+bar_width/2), (c_x+x_spacing*width,c_y+bar_height*1.2+bar_width/2), bar_width)
+    pygame.draw.rect(screen, BLACK, bound, 1, 1)
+    tp.printat(screen, 'Carousel', BLACK, (c_x, c_y + bar_height*1.4 + bar_width))
+
+
 
     
 

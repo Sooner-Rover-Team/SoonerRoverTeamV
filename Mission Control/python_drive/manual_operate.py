@@ -78,7 +78,7 @@ THRESHOLD_HIGH = 0.15
 FPS = 20
 flash = False
 mode = 'drive'
-arm_installed = True
+arm_installed = False
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -430,7 +430,7 @@ if __name__ == "__main__":
         else:
             tp.print(screen,"Science",RED)
             act_speed_draw = act_speed-126 if act_dir == 0 else -(act_speed-126)
-            util.draw_science_stuff(screen, (act_speed_draw, fan_speed, drill_speed), tp)
+            util.draw_science_stuff(screen, (act_speed_draw, fan_speed, drill_speed, carousel_speed), tp)
         tp.println(screen, '',BLACK)
 
         pygame.display.flip()
