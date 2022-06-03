@@ -12,8 +12,8 @@
 
 // 3, 5, 6
 #define BASE_PIN A0
-#define SHOULDER_PIN A1
-#define ELBOW_PIN A2
+#define SHOULDER_PIN A4
+#define ELBOW_PIN A3
 #define CLAW_OPEN 8
 #define CLAW_CLOSE 9
 

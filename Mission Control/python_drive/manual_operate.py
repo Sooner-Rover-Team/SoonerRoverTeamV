@@ -329,14 +329,15 @@ if __name__ == "__main__":
             if(abs(L_X) > THRESHOLD_HIGH):
                 temp_u -= -L_X*movement_factor
             if(abs(R_X) > THRESHOLD_HIGH):
-                phi = R_X
+                theta = -R_X
             else:
+                theta = 0
+            if(abs(R_Y) > THRESHOLD_HIGH):
+                phi = R_Y
+            else: 
                 phi = 0
             L_2 = (L_2+1)/2
             R_2 = (R_2+1)/2
-            if(abs(R_Y) > THRESHOLD_HIGH):
-                theta = -R_Y
-            else: theta = 0
 
             x_len, y_len, temp_u, temp_v = util.arm_calc(alt_arm_config, temp_u, temp_v)
             shoulder_length = int(round((x_len-9.69)*(95/3.93))+40) & 0xff
@@ -428,8 +429,9 @@ if __name__ == "__main__":
             util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
         else:
             tp.print(screen,"Science",RED)
+            act_speed_draw = act_speed-126 if act_dir == 0 else -(act_speed-126)
+            util.draw_science_stuff(screen, (act_speed_draw, fan_speed, drill_speed), tp)
         tp.println(screen, '',BLACK)
-        firstdraw = True
 
         pygame.display.flip()
         timer.tick(FPS)
