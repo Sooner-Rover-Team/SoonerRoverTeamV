@@ -164,20 +164,60 @@ def draw_drive_stuff(screen, leftwheels, rightwheels):
         pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord+height*bar_height),bar_width)
         pygame.draw.rect(screen, BLACK, bound, 1, 1)
 
+def draw_science_stuff(screen, speeds, tp):
+    w,h = screen.get_size()
+    labels = ['Up/Down', 'Fan', 'Vacuum']
+    c_x = w/2
+    c_y =h/2
+    x_spacing = w/4
+    left_x = c_x - x_spacing
+    bar_height = h/4
+    bar_width = 60
+    for i in range(len(speeds)):
+        s = speeds[i]
+        x_coord = left_x + i * x_spacing
+        y_coord = c_y
+        height = s / 128
+        tp.printat(screen, labels[i], BLACK, (x_coord, y_coord - bar_height*1.2))
+        bound = pygame.rect.Rect(x_coord - bar_width/2, y_coord - bar_height,bar_width,bar_height*2)
+        if i == 0:
+            if s > 0:
+                color = (255*abs(height), 0,0,0)
+            else:
+                color = (0, 255*abs(height),0,0)
+            pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord+height*bar_height),bar_width)
+        else:
+            if i == 1:
+                color = (255*abs(height/2), 0,0,0)
+            else:
+                color = (0,0,255*abs(height/2),0)
+            pygame.draw.line(screen, color, (x_coord, y_coord+bar_height), (x_coord, y_coord+bar_height-height*bar_height),bar_width)
+
+        pygame.draw.rect(screen, BLACK, bound, 1, 1)
+
+    
+
 
 class TextPrint(object):
     def __init__(self, size):
         self.reset()
         self.font = pygame.font.Font(None, size)
 
-    def print(self, screen, textString, color):
-        textBitmap = self.font.render(textString, True, color)
+    def print(self, screen, text_string, color):
+        textBitmap = self.font.render(text_string, True, color)
         screen.blit(textBitmap, (self.x, self.y))
         self.x += textBitmap.get_width()
 
-    def println(self, screen, textString, color):
-        self.print(screen, textString, color)
+    def println(self, screen, text_string, color):
+        self.print(screen, text_string, color)
         self.y += self.line_height
+    
+    def printat(self, screen, text_string, color, coord):
+        textBitmap = self.font.render(text_string, True, color)
+        x_coord = coord[0] - textBitmap.get_width()/2
+        y_coord = coord[1] - textBitmap.get_height()/2
+        screen.blit(textBitmap, (x_coord, y_coord))
+
 
     def reset(self):
         self.x = 10
