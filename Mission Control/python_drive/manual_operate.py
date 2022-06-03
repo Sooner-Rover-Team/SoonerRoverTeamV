@@ -14,12 +14,15 @@ if os.path.dirname(__file__) != '':
 """ Exit if there is no joystick """
 pygame.joystick.init()
 if pygame.joystick.get_count() == 0:
+    print("no joystick found, exiting")
     exit()
 joystick = pygame.joystick.Joystick(0)
 print('Found',joystick.get_name())
 
 config = configparser.ConfigParser()
 config.read('./config.ini')
+USING_BRIDGE = config.getboolean('Connection', 'USING_BRIDGE')
+BRIDGE_HOST = config['Connection']['BRIDGE_HOST']
 EBOX_HOST = config['Connection']['EBOX_HOST']
 EBOX_PORT = int(config['Connection']['EBOX_PORT'])
 ARM_HOST = config['Connection']['ARM_HOST']
@@ -67,6 +70,7 @@ BLUE = (0,0,255)
 screen.fill(WHITE)
 timer = Clock()
 tp = util.TextPrint(40)
+# pygame.event.set_grab(True)
 
 """ Other constants and global variables """
 THRESHOLD_LOW = 0.08
@@ -74,23 +78,22 @@ THRESHOLD_HIGH = 0.15
 FPS = 20
 flash = False
 mode = 'drive'
-arm_installed = False
+arm_installed = True
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-ebox_socket.connect((EBOX_HOST,EBOX_PORT))
 arm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-arm_socket.connect((ARM_HOST,ARM_PORT))
 science_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-science_socket.connect((SCI_HOST,SCI_PORT))
+if USING_BRIDGE:
+    ebox_socket.connect((BRIDGE_HOST,EBOX_PORT))
+    arm_socket.connect((BRIDGE_HOST,ARM_PORT))
+    science_socket.connect((BRIDGE_HOST,SCI_PORT))
+else:
+    ebox_socket.connect((EBOX_HOST,EBOX_PORT))
+    arm_socket.connect((ARM_HOST,ARM_PORT))
+    science_socket.connect((SCI_HOST,SCI_PORT))
 
 """ ARM SHIT GOES HERE """
-CLAW_L_OPEN = 149
-CLAW_L_CLOSED = 87
-CLAW_R_OPEN = 73
-CLAW_R_CLOSED = 28
-clawL = CLAW_L_OPEN
-clawR = CLAW_R_OPEN;
 claw_closed = False
 coord_u = 18.5;       # wrist position
 coord_v = 9.5;
@@ -132,7 +135,7 @@ def wheel_message(leftwheels, rightwheels):
     return msg
 
 """ make an arm message """
-def arm_messge(claw_l, claw_r, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle):
+def arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle):
     out = []
     out.append(255)
     out.append(1)
@@ -141,9 +144,8 @@ def arm_messge(claw_l, claw_r, base_rotation, shoulder_length, elbow_length, wri
     out.append(elbow_length)
     out.append(int(wrist_angle) & 0xff)
     out.append(int(wrist_rotation) & 0xff)
-    out.append(claw_l)
-    out.append(claw_r)
-    out.append(int(sum(out[2:9])) & 0xff)
+    out.append(claw_dir)
+    out.append(int(sum(out[2:8])) & 0xff)
     return out
 
 """ make a science message """
@@ -163,6 +165,7 @@ def sci_message(act_dir, act_speed, drill_speed, fan_speed, carousel_speed, caro
 """ wheel toggle message """
 def toggle_wheels():
     msg = bytearray([0x23,0x01])
+    print('wheels toggled')
     return msg
 
 """ check if stop is being sent to the wheels"""
@@ -186,11 +189,19 @@ def lights(r,g,b):
     print(msg)
     return msg
 
+def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
+    w,h = screen.get_size()
+    c_x = w/2
+    c_y = h/2
+
 if __name__ == "__main__":
     running = True
     stopsent = False
+    # halt will override stopsent to make it stop moving no matter what
+    halt = False
     leftwheels = [126] * 3
     rightwheels = [126] * 3
+    ebox_socket.sendall(lights(0, 0, 255))
     while(running):
         """ check all button events """
         for event in pygame.event.get():
@@ -210,11 +221,14 @@ if __name__ == "__main__":
                 # switch modes
                 if event.button == SELECT:
                     arm_installed = not arm_installed
-                    print('science/arm swapped')
+                    if arm_installed:
+                        print('arm selected')
+                    else:
+                        print('science selected')
                 if event.button == B_BUTTON:
                     if mode == 'drive':
                         mode = 'operate'
-                        print('mode has been changed to arm')
+                        print('mode has been changed to operate')
                         msg = wheel_message([126]*3,[126]*3)
                         ebox_socket.sendall(msg)
                         print('sent',msg[2:8])
@@ -222,6 +236,7 @@ if __name__ == "__main__":
                     else:
                         mode = 'drive'
                         print('mode has been changed to drive')
+                        ebox_socket.sendall(lights(0,0,255))
                 if mode == 'drive':
                     if event.button == A_BUTTON:
                         print('lights')
@@ -231,21 +246,18 @@ if __name__ == "__main__":
                             msg = lights(0,0,255)
                         flash = not flash
                         ebox_socket.sendall(msg)
+                    if event.button == X_BUTTON:
+                        msg = toggle_wheels()
+                        ebox_socket.sendall(msg)
                 else:
                     if arm_installed:
                         if event.button == X_BUTTON:
                             print('alt config')
                             alt_arm_config = not alt_arm_config
                         elif event.button == A_BUTTON:
-                            print('clamp')
-                            if claw_closed:
-                                clawL = CLAW_L_OPEN
-                                clawR = CLAW_R_OPEN
-                            else:
-                                clawL = CLAW_L_CLOSED
-                                clawR = CLAW_R_CLOSED
+                            print('clamp (does nothing lmao)')
                             claw_closed = not claw_closed
-        
+                            
         """ if the joystick is disconnected wait """
         if pygame.joystick.get_count() == 0:
             continue
@@ -285,11 +297,17 @@ if __name__ == "__main__":
             if joystick.get_button(R_BUMPER):
                 leftwheels[0:2] = [126] * 2
                 rightwheels[0:2] = [126] * 2
+            if joystick.get_button(L_BUMPER) and joystick.get_button(R_BUMPER):
+                halt = True
+                leftwheels[0:3] = [126] * 3
+                rightwheels[0:3] = [126] * 3
+            else:
+                halt = False
 
             data = wheel_message(leftwheels, rightwheels)
 
             if (isstopped(leftwheels,rightwheels)):
-                if not stopsent:
+                if not stopsent or halt:
                     print('sent',data[2:8])
                     ebox_socket.sendall(data)
                     stopsent = True
@@ -326,6 +344,13 @@ if __name__ == "__main__":
 
             coord_u = temp_u;
             coord_v = temp_v;
+
+            if joystick.get_button(L_BUMPER):
+                claw_dir = 0
+            elif joystick.get_button(R_BUMPER):
+                claw_dir = 2
+            else:
+                claw_dir = 1
                 
             wrist_angle = 127 * theta;
             if (wrist_angle < 10 and wrist_angle > -10):
@@ -344,7 +369,7 @@ if __name__ == "__main__":
                 base_rotation = 90
 
             # send the data
-            out = arm_messge(clawL, clawR, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
+            out = arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
             print(out)
             arm_socket.sendall(bytearray(out));
         # send science package messages
@@ -397,16 +422,18 @@ if __name__ == "__main__":
         tp.print(screen,"Mode: ",BLACK)
         if mode == 'drive':
             tp.print(screen,"Drive",RED)
+            util.draw_drive_stuff(screen,leftwheels, rightwheels)
         elif arm_installed:
             tp.print(screen,"Arm",RED)
+            util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
         else:
             tp.print(screen,"Science",RED)
         tp.println(screen, '',BLACK)
         firstdraw = True
-        util.draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y)
 
         pygame.display.flip()
         timer.tick(FPS)
+
 
 pygame.joystick.quit()
 pygame.quit()

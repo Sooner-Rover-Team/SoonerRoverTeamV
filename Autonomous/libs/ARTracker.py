@@ -2,14 +2,15 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 import configparser
-import os
 import sys
-
+from time import sleep
+import os
+'''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
 sys.path.append(darknetPath)
 from darknet_images import *
 from darknet import load_network
-
+'''
 
 class ARTracker:
 
@@ -17,7 +18,7 @@ class ARTracker:
     #Cameras should be a list of file paths to cameras that are to be used
     #set write to True to write to disk what the cameras are seeing
     #set useYOLO to True to use yolo when attempting to detect the ar tags
-    def __init__(self, cameras, write=False, useYOLO = False):
+    def __init__(self, cameras, write=False, useYOLO = False, configFile="config.ini"):
         self.write=write
         self.distanceToMarker = -1
         self.angleToMarker = -999.9
@@ -28,7 +29,13 @@ class ARTracker:
         
         # Open the config file
         config = configparser.ConfigParser(allow_no_value=True)
-        config.read(os.path.dirname(__file__) + '/../config.ini')
+        if not config.read(configFile):
+            print(f"ERROR OPENING AR CONFIG:", end="")
+            if os.path.isabs(configFile):
+                print(configFile)
+            else:
+                print("{os.getcwd()}/{configFile}")
+            exit(-2)
 
         # Set variables from the config file
         self.degreesPerPixel = float(config['ARTRACKER']['DEGREES_PER_PIXEL'])
@@ -65,14 +72,25 @@ class ARTracker:
         # Initialize cameras
         self.caps=[]
         for i in range(0, len(self.cameras)):
-            self.caps.append(cv2.VideoCapture(self.cameras[i]))
-            if not self.caps[i].isOpened():
-                print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!Camera ", i, " did not open!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            self.caps[i].set(cv2.CAP_PROP_FRAME_WIDTH, self.frameWidth)
-            self.caps[i].set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
-            self.caps[i].set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
-            self.caps[i].set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
-    
+            #Makes sure the camera actually connects
+            while True:
+                cam = cv2.VideoCapture(self.cameras[i])
+                if not cam.isOpened():
+                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!Camera ", i, " did not open!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    cam.release()
+                    continue
+                cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frameHeight)
+                cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.frameWidth)
+                cam.set(cv2.CAP_PROP_BUFFERSIZE, 1) # greatly speeds up the program but the writer is a bit wack because of this
+                cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]))
+                #ret, testIm =  self.caps[i].read()[0]:
+                if not cam.read()[0]:
+                    cam.release()
+                else:
+                    self.caps.append(cam)
+                    break
+
+
     #helper method to convert YOLO detections into the aruco corners format
     def _convertToCorners(self,detections, numCorners):
         corners = []
@@ -113,15 +131,14 @@ class ARTracker:
         for i in range(40, 221, 60):
             bw = cv2.threshold(image,i,255, cv2.THRESH_BINARY)[1]
             (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers(bw, self.markerDict)   
-
             if not (self.markerIDs is None):
-                
+                print('', end='') #I have not been able to reproduce an error when I have a print statement here so I'm leaving it in    
                 if id2==-1: #single post
                     self.index1 = -1 
                     # this just checks to make sure that it found the right marker
-                    for i in range(len(self.markerIDs)):  
-                        if self.markerIDs[i] == id1:
-                            self.index1 = i 
+                    for m in range(len(self.markerIDs)):  
+                        if self.markerIDs[m] == id1:
+                            self.index1 = m  
                             break  
                 
                     if self.index1 != -1:

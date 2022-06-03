@@ -19,13 +19,18 @@ def log(message):
     print(timestr + message)
 
 
-def findactivestreams(vslist: list) -> int:
+def stream_info(vslist: list):
     # find the number of streams actively providing frames
     activestreams = 0
+    maxframesize = 0
+    recording = []
     for vs in vslist:
+        recording.append(vs.recording)
         if vs.stopped == False:
             activestreams += 1
-    return activestreams
+        maxframesize = max(maxframesize, vs.height)
+    # active_streams = [v for v in vslist if v.stopped == False]
+    return recording, activestreams, maxframesize
 
 
 def findrecording(vslist: list) -> list:
@@ -60,12 +65,15 @@ def handlecamops(vslist: list[VideoStream], request: Request, activestreams: int
         if 'startrecordvs{}'.format(i+1) in request.form:
             vslist[i].recordstart()
         if 'relaunchvs{}'.format(i+1) in request.form:
-            vslist[i].relaunch()
+            res = request.form['relaunchvsres{}'.format(i+1)]
+            vslist[i].relaunch(res)
         if 'startvs{}'.format(i+1) in request.form and activestreams <= 3:
             vslist[i].start()
         if 'movetoleft{}'.format(i+1) in request.form:
             temp = vslist.pop(i)
             vslist.insert(0, temp)
+        if 'rotate{}'.format(i+1) in request.form:
+            vslist[i].rotate()
 
 
 def timestampframe(frame: Frame) -> Frame:

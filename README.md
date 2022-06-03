@@ -1,5 +1,8 @@
-# SoonerRoverTeamV
-This is the fifth repository for the Sooner Rover Team.
+![Sooner Rover Team Logo](/Mission%20Control/video_streamer/static/logo.png)
+
+---
+
+This is the current code repository for the Sooner Rover Team.
 
 ## Active Tasks
 [CS Tasks](https://github.com/bentonsmith8/SoonerRoverTeamV/projects/2)

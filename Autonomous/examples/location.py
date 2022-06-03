@@ -1,13 +1,7 @@
-import os
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-import sys
-sys.path.append('../')
-
-# from gps import gps 
 from time import sleep
 from libs import Location
 
+#os.chdir(os.path.dirname(os.path.abspath(__file__)))
 if __name__ == '__main__':
     l = Location.Location('10.0.0.222','55556')
     print('starting gps')
@@ -18,4 +12,5 @@ if __name__ == '__main__':
         print(l.latitude)
         print(l.longitude)
         print(l.bearing)
-        sleep(.5)
+        print()
+        sleep(1)

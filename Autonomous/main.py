@@ -1,17 +1,33 @@
 import os
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
+path = (os.path.dirname(os.path.abspath(__file__)))
 import sys
+import configparser
+from libs import UDPOut
 from libs import Drive
+import threading
+from time import sleep
 
-#TODO: LEDS!
+mbedIP='10.0.0.101'
+mbedPort=1001
+
+flashing = False
+
+def flash():
+    while flashing:
+        UDPOut.sendLED(mbedIP, mbedPort, 'g')
+        sleep(.2)
+        UDPOut.sendLED(mbedIP, mbedPort, 'o')
+        sleep(.2)
+
+
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
 def drive(rover, id1, id2=-1):
+    global flashing
     locations = []
-    
     while True:
-        coords = [float(item) for item in input("Enter Lat Lon: ").split()]
+        print("Enter Lat Lon: ", end="")
+        coords = [float(item) for item in input("").split()]
         if len(coords) != 2:
             print('please input <lat lon>')
             continue
@@ -19,14 +35,40 @@ def drive(rover, id1, id2=-1):
             break
        
         locations.append(coords)
-
+    
+    flashing = False
+    UDPOut.sendLED(mbedIP, mbedPort, 'r')
     found = rover.driveAlongCoordinates(locations,id1, id2)
     
     if id1 != -1:
         rover.trackARMarker(id1, id2)
+    
+    flashing=True
+    lights = threading.Thread(target=flash)
+    lights.start()
+    #UDPOut.sendLED(mbedIP, mbedPort, 'g')
 
 if __name__ == "__main__":
+    os.chdir(path)
+    print(os.getcwd())
     del sys.argv[0]
-    rover = Drive.Drive(50, sys.argv)
+    if(len(sys.argv) < 1):
+        print("ERROR: must at least specify one camera")
+        exit(-1)
+    
+    #gets the mbed ip and port
+    config = configparser.ConfigParser(allow_no_value=True)
+    if not config.read('config.ini'):
+        print("DID NOT OPEN CONFIG")
+        exit(-2)
+    mbedIP = str(config['CONFIG']['MBED_IP'])
+    mbedPort = int(config['CONFIG']['MBED_PORT'])
 
-    drive(rover, 0,1)
+    rover = Drive.Drive(50, sys.argv)
+#    drive(rover, -1)
+#    drive(rover, -1)
+#    drive(rover, -1)
+   # drive(rover, 1)
+    drive(rover, 2)
+   # drive(rover, 3)
+    drive(rover, 4,5)
