@@ -39,8 +39,10 @@ while True:
         
         tagWidth = 0
         if not markerIDs is None and markerIDs[0] == 4:
-            tagWidth = corners[0][0][1][0] - corners[0][0][0][0] 
-            focalLength = (tagWidth * 100) / 20 #Assumes tag is 20cm wide and 100cm away
+            tagWidth = corners[0][0][1][0] - corners[0][0][0][0]
+            
+             #IMPORTANT: Assumes tag is 20cm wide and 100cm away 
+            focalLength = (tagWidth * 100) / 20
             print("Focal length: ", focalLength)
 
             centerXMarker = (corners[0][0][1][0] + corners[0][0][0][0]) / 2 
