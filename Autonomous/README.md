@@ -10,6 +10,7 @@ First, ensure that `main.py` drives to the desired ArUco markers <br>
 To run the main autonomous program without awful debugging output, enter
 `python3 main.py <camera_file> 2> /dev/null` <br>
 * To get the camera file, enter `v4l2-ctl --list-devices` to find the desired camera's file. It will look like `/dev/video2` <br>
+<br>
 To view the rover's location and get coordinates, navigate to `<rover's ip>:5000` in your web browser
 
 ## Code Structure
