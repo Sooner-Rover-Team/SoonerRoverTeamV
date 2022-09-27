@@ -16,7 +16,7 @@ CAN3 can(spi, A7, A2);
 DigitalOut led(LED1);
 
 int main() {
-    can.frequency(8000000);
+    can.frequency(CAN_125KBPS_8MHZ);
     char data[8];
     time_t t;
     srand((unsigned)time(&t));
@@ -33,7 +33,7 @@ int main() {
         sum &= 0xff;
         printf("cs: %d\r\n",sum);
         data[6] = sum;
-        CANMessage c_msg(1, data, 8, CANData, CANStandard);
+        CANMessage c_msg(1, data, 7, CANData, CANStandard);
         can.write(&c_msg);
         wait(.1);
         led = 0;
