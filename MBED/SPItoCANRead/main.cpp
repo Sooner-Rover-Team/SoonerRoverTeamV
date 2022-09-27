@@ -18,7 +18,7 @@ CANMessage c_msg;
 uint8_t status;
 
 int main() {
-    can.frequency(8000000);
+    can.frequency(CAN_125KBPS_8MHZ);
     wait(.1);
     //char c = 0;
     led = 0;
