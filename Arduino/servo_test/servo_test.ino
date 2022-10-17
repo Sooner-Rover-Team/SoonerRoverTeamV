@@ -3,7 +3,7 @@
 // This basic tool can be used to test and calibrate the talons.
 // Talons should be calibrated to the range 10-170. They freak out if you go below 10 or above 170
 
-#define PIN_SERVO A3
+#define PIN_SERVO A0
 
 String inString = "";
 Servo myServo;

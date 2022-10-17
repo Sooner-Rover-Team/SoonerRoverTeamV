@@ -400,9 +400,9 @@ if __name__ == "__main__":
                 fan_speed += int(20 * R_2)
                 fan_speed = 255 if fan_speed > 255 else fan_speed
             if (joystick.get_button(L_BUMPER)):
-                carousel_speed = 60
+                carousel_speed = 70
             elif (joystick.get_button(R_BUMPER)):
-                carousel_speed = 120
+                carousel_speed = 110
             else:
                 carousel_speed = 90
             if joystick.get_button(A_BUTTON):

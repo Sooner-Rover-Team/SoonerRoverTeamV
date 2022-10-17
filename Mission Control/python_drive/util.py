@@ -166,7 +166,7 @@ def draw_drive_stuff(screen, leftwheels, rightwheels):
 
 def draw_science_stuff(screen, speeds, tp):
     w,h = screen.get_size()
-    labels = ['Up/Down', 'Fan', 'Vacuum']
+    labels = ['Up/Down', 'Vacuum', 'Drill']
     c_x = w/2
     c_y =h/2
     x_spacing = w/4
