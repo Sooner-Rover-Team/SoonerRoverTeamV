@@ -1,6 +1,7 @@
 import os
 path = (os.path.dirname(os.path.abspath(__file__)))
 import sys
+import argparse
 import configparser
 from libs import UDPOut
 from libs import Drive
@@ -25,16 +26,14 @@ def flash():
 def drive(rover, id1, id2=-1):
     global flashing
     locations = []
+    argParser = argparse.ArgumentParser()
     while True:
-        print("Enter Lat Lon: ", end="")
-        coords = [float(item) for item in input("").split()]
-        if len(coords) != 2:
-            print('please input <lat lon>')
-            continue
-        if coords[0] == -1 and coords[1] == -1:
-            break
-       
-        locations.append(coords)
+        #user input
+        argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
+        argParser.add_argument("-ll", "--latLong", type=float, help="option to input latitude longitude coordinates for an AR code", nargs='+')
+        args = argParser.parse_args()
+        if len(args.latLong) == 2:
+            locations.append(args.latLong)
     
     flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
@@ -52,6 +51,8 @@ if __name__ == "__main__":
     os.chdir(path)
     print(os.getcwd())
     del sys.argv[0]
+    #user input (args from system)
+    #TODO: Replace sys.argv with argparse
     if(len(sys.argv) < 1):
         print("ERROR: must at least specify one camera")
         exit(-1)
