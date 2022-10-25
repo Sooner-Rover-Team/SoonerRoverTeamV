@@ -20,21 +20,25 @@ def flash():
         UDPOut.sendLED(mbedIP, mbedPort, 'o')
         sleep(.2)
 
-
+argParser = argparse.ArgumentParser()
+argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
+argParser.add_argument("-ll", "--latLong", help="option to input latitude longitude coordinates for an AR code, set to true to trigger loop", action="store_true")
+args = argParser.parse_args()
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
 def drive(rover, id1, id2=-1):
     global flashing
     locations = []
-    argParser = argparse.ArgumentParser()
-    while True:
-        #user input
-        argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
-        argParser.add_argument("-ll", "--latLong", type=float, help="option to input latitude longitude coordinates for an AR code", nargs='+')
-        args = argParser.parse_args()
-        if len(args.latLong) == 2:
-            locations.append(args.latLong)
-    
+
+    while args.latLong:
+        print("Enter Lat Lon (enter -1 -1 if not looking for tag):", end="")
+        coords = [float(item) for item in input("").split()]
+        if len(coords) != 2:
+            print('please input <lat lon>')
+            continue
+        if coords[0] == -1 and coords[1] == -1:
+            break
+
     flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
     found = rover.driveAlongCoordinates(locations,id1, id2)
@@ -50,10 +54,8 @@ def drive(rover, id1, id2=-1):
 if __name__ == "__main__":
     os.chdir(path)
     print(os.getcwd())
-    del sys.argv[0]
     #user input (args from system)
-    #TODO: Replace sys.argv with argparse
-    if(len(sys.argv) < 1):
+    if args.cameraInput is None:
         print("ERROR: must at least specify one camera")
         exit(-1)
     
@@ -65,7 +67,7 @@ if __name__ == "__main__":
     mbedIP = str(config['CONFIG']['MBED_IP'])
     mbedPort = int(config['CONFIG']['MBED_PORT'])
 
-    rover = Drive.Drive(50, sys.argv)
+    rover = Drive.Drive(50, args.cameraInput)
 #    drive(rover, -1)
 #    drive(rover, -1)
 #    drive(rover, -1)
