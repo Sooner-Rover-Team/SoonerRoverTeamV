@@ -1,6 +1,5 @@
 import os
 path = (os.path.dirname(os.path.abspath(__file__)))
-import sys
 import argparse
 import configparser
 from libs import UDPOut
