@@ -21,7 +21,7 @@ def flash():
 
 argParser = argparse.ArgumentParser()
 argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
-argParser.add_argument("-ll", "--latLong", help="option to input latitude longitude coordinates for an AR code, set to true to trigger loop", action="store_true")
+argParser.add_argument("-ll", "--latLong", type=str, help="takes a filename for a text file, then reads that file for latlong coordinates")
 args = argParser.parse_args()
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
@@ -29,14 +29,22 @@ def drive(rover, id1, id2=-1):
     global flashing
     locations = []
 
-    while args.latLong:
-        print("Enter Lat Lon (enter -1 -1 if not looking for tag):", end="")
-        coords = [float(item) for item in input("").split()]
-        if len(coords) != 2:
-            print('please input <lat lon>')
-            continue
-        if coords[0] == -1 and coords[1] == -1:
-            break
+    if args.latLong is not None:
+        with open(args.latLong) as f:
+            lineNum = 0
+            for line in f:
+                lineNum += 1
+                try:
+                    coords = [float(item.replace('\ufeff',"")) for item in line.strip().split()]
+                except:
+                    print("Parse Error on line " + str(lineNum) + ": Please enter <lat long>")
+                    break
+                else:
+                    if len(coords) != 2:
+                        print("Error on line " + str(lineNum) + ": Insufficient number of coordinates. Please enter <lat long>")
+                        break        
+                    locations.append(coords)
+            f.close()
 
     flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
