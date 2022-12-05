@@ -211,6 +211,12 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
   }
 }
 
+/*
+seems like the Ethernet connects to router and uses udpServerListenOnPort to connect a function to a port.
+  udpSerialPrint() is being used to interpret UDP msgs from server, print to serial, and write the values to the wheels.
+  In this case, the motors use PWM (Servo class), so the values are all angles 0-180, 0 for full reverse, 90 for stop, 180 for full forward.
+*/
+
 void setup() {
 #if DEBUG_MODE == 1
   Serial.begin(9600);
@@ -271,7 +277,8 @@ void loop() {
   // this must be called for ethercard functions to work.
   ether.packetLoop(ether.packetReceive());
 
-  // stop all motors after 1 second of no messages
+  // stop all motors after 1 second of no messages. Even if no controller buttons r pressed, 
+  //    messages will be sent. No messages sent means we lost connection. if we didn't stop the rover, it'd wander off in the last state it was in
   if ( millis() - timeOut >= 1000)
   {
     timeOut = millis();
