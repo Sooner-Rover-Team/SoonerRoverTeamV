@@ -66,13 +66,18 @@ START = 7
 
 """ Pygame stuff """
 pygame.init()
-screen = pygame.display.set_mode((800,600))
+wheelImage = pygame.image.load("backgroundPics\wheelBackground.png")
+scienceImage = pygame.image.load("backgroundPics\scienceBackground.png")
+armImage = pygame.image.load("backgroundPics\\armBackground.png")
+screen = pygame.display.set_mode((1200,600)) # width/ height of window in pixels
+image = wheelImage
+screen.blit(image, (0,0))
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 RED = (255,0,0)
 GREEN = (0,255,0)
 BLUE = (0,0,255)
-screen.fill(WHITE)
+#screen.fill(WHITE)
 timer = Clock()
 tp = util.TextPrint(40)
 # pygame.event.set_grab(True)
@@ -100,16 +105,17 @@ else:
 
 """ ARM SHIT GOES HERE """
 claw_closed = False
-coord_u = 18.5;       # wrist position
-coord_v = 9.5;
-phi = 0.0;            # wrist angle
-theta = 0.0;
+coord_u = 18.5       # wrist position
+coord_v = 9.5
+phi = 0.0            # wrist angle
+theta = 0.0
+poke=False
 # physical values of arm:
-base_rotation = 0;    # between 0 and 180
-shoulder_length = 0;
-elbow_length = 0;
-wrist_rotation = 0.0; # in degrees
-wrist_angle = 0.0;
+base_rotation = 0    # between 0 and 180
+shoulder_length = 0
+elbow_length = 0
+wrist_rotation = 0.0 # in degrees
+wrist_angle = 0.0
 
 alt_arm_config = False
 """ DONT WORRY ABOUT IT """
@@ -366,6 +372,21 @@ if __name__ == "__main__":
             # temporarly save coords to do inverse kinematics on the moved point
             temp_u = coord_u
             temp_v = coord_v
+
+            # if Y button is pressed when controlling the arm, arm performs 'poking' action for buttons
+            #    button can be held down to keep arm extended
+            # if(joystick.get_button(Y_BUTTON) and not poke):
+            #     poke=True
+            #     temp_u += 1*movement_factor
+            # elif(not joystick.get_button(Y_BUTTON) and poke):
+            #     poke = False
+            #     temp_u -= 1*movement_factor
+
+            if(joystick.get_button(Y_BUTTON)):
+                temp_u += 1*movement_factor
+                temp_v += .5*movement_factor
+
+
             # left stick moves point in space left/right/up/down
             if(abs(L_Y) > THRESHOLD_HIGH):
                 temp_v -= L_Y*movement_factor
@@ -420,7 +441,7 @@ if __name__ == "__main__":
 
             # send the data
             out = arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
-            print(out)
+            #print(out)
             arm_socket.sendall(bytearray(out))
 
         # send science package messages
@@ -480,7 +501,16 @@ if __name__ == "__main__":
         claw_x = coord_u
         claw_y = -coord_v
         tp.reset()
-        screen.fill(WHITE)
+        #screen.fill(WHITE)
+        # choose which background is displayed
+        if mode == 'drive':
+            image = wheelImage
+        elif arm_installed:
+            image = armImage
+        else:
+            image = scienceImage
+
+        screen.blit(image, (0,0))
         tp.print(screen,"Mode: ",BLACK)
         if mode == 'drive':
             tp.print(screen,"Drive",RED)
@@ -495,7 +525,7 @@ if __name__ == "__main__":
         tp.println(screen, '',BLACK)
 
         pygame.display.flip()
-        timer.tick(FPS)
+        timer.tick(40) #FPS - Test once subsystems are built to see how fast we can send messages without big errors or stalls in the arduino function
 
 
 pygame.joystick.quit()
