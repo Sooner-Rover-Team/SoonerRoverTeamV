@@ -47,7 +47,7 @@ int clawDir = 0;
 
 
 // these variables are to measure how long it's been since last msg was recieved
-unsigned long stopTimeout = 0, turnTimeout = 0;
+unsigned long Timeout = 0;
 
 // Once UDP data is received, send those variables through CAN using this function
 void sendToCAN() {
@@ -153,4 +153,20 @@ void loop()
 {
   // this must be called for ethercard functions to work.
   ether.packetLoop(ether.packetReceive());
+
+  if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop all motors
+  {
+    timeOut = millis();
+    // stopped position of motors
+    base = 90;
+    bicepPosition = 180;
+    forearmPosition = 180;
+    wristAngle = 0;
+    wristRotation = 0;
+    clawDir = 0;
+    
+    #if DEBUG
+    Serial.println("Stopped motors");
+    #endif
+  }
 }

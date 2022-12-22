@@ -17,7 +17,6 @@ int wristSpeed = 90;
 int bicepPosition = 180;
 int forearmPosition = 180;
 
-int 
 
 // not exactly sure how CAN receives data, but when a msg is received, decode and store data to variables.
 void receiveCAN() {
