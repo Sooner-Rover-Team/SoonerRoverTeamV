@@ -136,8 +136,6 @@ void setup()
   ether.begin(sizeof Ethernet::buffer, mymac, 10);
 #endif
 
-  bicep.write(180);
-  forearm.write(180);
   
   // set up static configuration (other option is automatic setup which creates a unique ip. If we used auto we would
   //  would have no idea what the arduino is and the base station wouldn't know where to send msgs
