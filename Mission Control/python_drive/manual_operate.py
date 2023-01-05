@@ -406,7 +406,7 @@ if __name__ == "__main__":
 
             # inverse kinematics calculates new GUI points based on new temp_u/temp_v modified by the controller
             x_len, y_len, temp_u, temp_v = util.arm_calc(alt_arm_config, temp_u, temp_v)
-            # shoulder/elbow length are distance that actuator should extend
+            # shoulder/elbow length are distance that actuator should extend (between 0 and 180 for servo PWM)
             shoulder_length = int(round((x_len-9.69)*(95/3.93))+40) & 0xff
             elbow_length = int(round((y_len-9.69)*(95/3.93))+40) & 0xff
             # coords for GUI
@@ -453,7 +453,7 @@ if __name__ == "__main__":
             if (abs(L_Y) > THRESHOLD_HIGH): # left stick vertical axis controls linear actuator -1 to +1. Send 0 to 255. 0-127=backward speed. 127=stop, 127-255=forward speed
                 act_speed = 127 + int(L_Y*127)
             else:
-                act_speed = 126
+                act_speed = 127
 
             # if (R_Y < -THRESHOLD_LOW): NOT USING DRILL THIS YEAR
             #     drill_speed -= int(20 * R_Y)
@@ -472,7 +472,7 @@ if __name__ == "__main__":
             #     fan_speed += int(20 * R_2)
             #     fan_speed = 255 if fan_speed > 255 else fan_speed
             if(abs(gim[1]) > THRESHOLD_HIGH):
-                microscope_position += 5*gim[1] #gim[1]=-1 when down d-pad is pressed. +1 when up
+                microscope_position -= 5*gim[1] #gim[1]=-1 when down d-pad is pressed. +1 when up
                 if(microscope_position>180):
                     microscope_position=180
                 elif(microscope_position<0):
@@ -522,6 +522,8 @@ if __name__ == "__main__":
             tp.print(screen,"Science",RED)
             #act_speed_draw = act_speed-126 if act_dir == 0 else -(act_speed-126)
             #util.draw_science_stuff(screen, (act_speed_draw, fan_speed, drill_speed, carousel_speed), tp)
+            util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp)
+
         tp.println(screen, '',BLACK)
 
         pygame.display.flip()
