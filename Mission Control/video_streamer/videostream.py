@@ -1,4 +1,3 @@
-from __future__ import annotations
 from threading import Thread
 import cv2
 import datetime
@@ -83,7 +82,7 @@ class VideoStream:
                 return
             (self.grabbed, self.frame) = self.stream.read()
 
-    def read(self) -> Frame:
+    def read(self):
         # return the most recent frame grabbed from the camera
         # rotate the frame first if need be
         if self.rotation != 0:
