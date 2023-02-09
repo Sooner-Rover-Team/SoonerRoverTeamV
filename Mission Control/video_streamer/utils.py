@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 if TYPE_CHECKING:
     from videostream import VideoStream
@@ -41,7 +40,7 @@ def findrecording(vslist: list) -> list:
     return recording
 
 
-def parseindicies(string: str) -> Union(map[int], int):
+def parseindicies(string: str):
     # takes a string of integers separated by commas and returns a map
     # or a single integer
     if ',' in string:
@@ -52,7 +51,7 @@ def parseindicies(string: str) -> Union(map[int], int):
         return [int(string)]
 
 
-def handlecamops(vslist: list[VideoStream], request: Request, activestreams: int, recordingstreams: list, camerasconnected: int) -> None:
+def handlecamops(vslist, request: Request, activestreams: int, recordingstreams: list, camerasconnected: int) -> None:
     # handlers for the currently connected cameras
     for i in range(0, camerasconnected):
         if 'stopvs{}'.format(i+1) in request.form:
