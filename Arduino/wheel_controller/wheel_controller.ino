@@ -232,7 +232,7 @@ void setup() {
   ether.printIp("GW:  ", ether.gwip);
   ether.printIp("DNS: ", ether.dnsip);
 
-  //register udpSerialPrint() to port 1337
+  //register udpSerialPrint() to port 1001
   ether.udpServerListenOnPort(&udpSerialPrint, 1001);
 
   // setup servos

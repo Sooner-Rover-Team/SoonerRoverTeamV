@@ -243,8 +243,8 @@ For loop creates Actuator, Microscope and Claw rectangles and uses height variab
 """
 def draw_science_stuff(screen, speeds, tp):
     w,h = (800,600)#screen.get_size()
-    labels = ['Actuator', 'Microscope Zoom', 'Claw']
-    directions = ['Up', 'Down', 'Out', 'In', 'Open', 'Close']
+    labels = ['Actuator', 'Microscope Zoom', 'Fan']
+    directions = ['Up', 'Down', 'Out', 'In', 'On', 'Off']
     c_x = w/2
     c_y =h/2
     x_spacing = w/3.5

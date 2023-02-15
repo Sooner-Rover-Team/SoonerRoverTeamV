@@ -111,21 +111,22 @@ phi = 0.0            # wrist angle
 theta = 0.0
 poke=False
 # physical values of arm:
-base_rotation = 0    # between 0 and 180
+base_rotation = 0    
 shoulder_length = 0
 elbow_length = 0
-wrist_rotation = 0.0 # in degrees
-wrist_angle = 0.0
+wrist_rotation = 0
+wrist_angle = 0
 
 alt_arm_config = False
 """ DONT WORRY ABOUT IT """
 
 """ SCICENCE PACKAGE SHIT """
 # 0 is down, 1 is up, 2 is neither
+numSameMessages = 0
 act_speed = 0
 carousel_turn = 0
 microscope_position = 0
-claw_position = 0
+claw_position = 90
 
 old_act_speed = 0
 old_carousel_turn = 0
@@ -149,18 +150,17 @@ def wheel_message(leftwheels, rightwheels, gimbalVert, gimbalHoriz):
     msg[10] = sum(msg[2:10]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
     return msg
 """ make an arm message """
-def arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle):
-    out = []
-    out.append(255) # 0b11111111
-    out.append(1)
-    out.append(int(base_rotation) & 0xff)
-    out.append(shoulder_length)
-    out.append(elbow_length)
-    out.append(int(wrist_angle) & 0xff)
-    out.append(int(wrist_rotation) & 0xff)
-    out.append(claw_dir)
-    out.append(int(sum(out[2:8])) & 0xff)
-    return out
+def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir):
+    msg = bytearray(8)
+    msg[0] = 0xff
+    msg[1] = shoulder_length
+    msg[2] = elbow_length
+    msg[3] = base_rotation
+    msg[4] = wrist_angle
+    msg[5] = wrist_rotation
+    msg[6] = claw_dir
+    msg[7] = sum(msg[2:8]) & 0xff
+    return msg
 
 """ make a science message """
 # SCIENCE msg: [startByte, deviceID, linearActuator, carousel, claw, microscope, checkSum]
@@ -294,7 +294,7 @@ if __name__ == "__main__":
                     else:
                         if event.button == A_BUTTON:
                             if claw_position == 180:
-                                claw_position = 0
+                                claw_position = 90
                             else:
                                 claw_position = 180
                             
@@ -333,12 +333,12 @@ if __name__ == "__main__":
             if abs(R_X) > THRESHOLD_LOW:
                 # right stick x value, unused for rn
                 pass
-            if joystick.get_button(L_BUMPER):
-                leftwheels[1:3] = [126] * 2
-                rightwheels[1:3] = [126] * 2
-            if joystick.get_button(R_BUMPER):
-                leftwheels[0:2] = [126] * 2
-                rightwheels[0:2] = [126] * 2
+            if joystick.get_button(L_BUMPER): # Front wheels only
+                leftwheels[1:2] = [126] * 2
+                rightwheels[1:2] = [126] * 2
+            if joystick.get_button(R_BUMPER): # Back wheels only
+                leftwheels[0:1] = [126] * 2
+                rightwheels[0:1] = [126] * 2
             if joystick.get_button(L_BUMPER) and joystick.get_button(R_BUMPER):
                 halt = True
                 leftwheels[0:3] = [126] * 3
@@ -367,21 +367,13 @@ if __name__ == "__main__":
             # TODO: Improve GUI to show control layouts.
             # TODO: Make function for smooth "poking" motion for button pressing
 
-            # movement factor is some rate that the position values change?
+            # movement factor is some rate that the position values change
             movement_factor = 0.2 / (FPS/10)
             # temporarly save coords to do inverse kinematics on the moved point
             temp_u = coord_u
             temp_v = coord_v
 
-            # if Y button is pressed when controlling the arm, arm performs 'poking' action for buttons
-            #    button can be held down to keep arm extended
-            # if(joystick.get_button(Y_BUTTON) and not poke):
-            #     poke=True
-            #     temp_u += 1*movement_factor
-            # elif(not joystick.get_button(Y_BUTTON) and poke):
-            #     poke = False
-            #     temp_u -= 1*movement_factor
-
+            # spamming the Y button will slowly move arm forwards to making poking buttons easier
             if(joystick.get_button(Y_BUTTON)):
                 temp_u += 1*movement_factor
                 temp_v += .5*movement_factor
@@ -392,17 +384,6 @@ if __name__ == "__main__":
                 temp_v -= L_Y*movement_factor
             if(abs(L_X) > THRESHOLD_HIGH):
                 temp_u -= -L_X*movement_factor
-            # right joystick controls hangle of wrist I think. pitch up/down/left/right
-            if(abs(R_X) > THRESHOLD_HIGH):
-                theta = -R_X
-            else:
-                theta = 0
-            if(abs(R_Y) > THRESHOLD_HIGH):
-                phi = R_Y
-            else: 
-                phi = 0
-            L_2 = (L_2+1)/2
-            R_2 = (R_2+1)/2
 
             # inverse kinematics calculates new GUI points based on new temp_u/temp_v modified by the controller
             x_len, y_len, temp_u, temp_v = util.arm_calc(alt_arm_config, temp_u, temp_v)
@@ -413,36 +394,39 @@ if __name__ == "__main__":
             coord_u = temp_u
             coord_v = temp_v
 
-            # open/close claw toggle
+            # open/close claw using L1/R1
             if joystick.get_button(L_BUMPER):
                 claw_dir = 0
             elif joystick.get_button(R_BUMPER):
-                claw_dir = 2
+                claw_dir = 255
             else:
-                claw_dir = 1
-            
-            # Old wrist control
-            wrist_angle = 127 * theta
-            if (wrist_angle < 10 and wrist_angle > -10):
-                wrist_angle = 0
-            wrist_rotation = 127 * phi
-            if (wrist_rotation < 10 and wrist_rotation > -10):
-                wrist_rotation = 0
+                claw_dir = 126
 
-            # base speed is controlled by Left/Right Triggers
-            if (R_2 > THRESHOLD_LOW and L_2 > THRESHOLD_LOW):
-                base_rotation = 90
-            elif (L_2 > THRESHOLD_LOW):
-                base_rotation = 90 - L_2 * 20
-            elif (R_2 > THRESHOLD_LOW):
-                base_rotation = 90 + R_2 * 21
+            L_2 = (L_2+1)/2 # L2/R2 map from -1 to 1, this remaps to 0 to 1
+            R_2 = (R_2+1)/2
+            #rotate the wrist 360 using L2/R2
+            if(abs(L_2) > THRESHOLD_LOW):
+                wrist_rotation = 126 + int(L_2*126)
+            elif(abs(R_2) > THRESHOLD_HIGH):
+                wrist_rotation = 126 - int(R_2*126)
             else:
-                base_rotation = 90
+                wrist_rotation = 126
+            
+            # Left joystick moves base and pitch/ yaw. This way, 
+            #    from perspective of the claw, left moves claw left, up moves claw up, etc.
+            if(abs(R_X) > THRESHOLD_HIGH):
+                base_rotation = 126 + int(R_X * 126)
+            else:
+                base_rotation = 126
+            if (abs(R_Y) > THRESHOLD_HIGH):
+                wrist_angle = 126 + int(R_Y * 126)
+            else:
+                wrist_angle = 126
 
             # send the data
-            out = arm_messge(claw_dir, base_rotation, shoulder_length, elbow_length, wrist_rotation, wrist_angle)
-            #print(out)
-            arm_socket.sendall(bytearray(out))
+            out = arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
+            print(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
+            #arm_socket.sendall(out)
 
         # send science package messages
         # Left/Right bumpers move carousel in sections.
@@ -491,11 +475,17 @@ if __name__ == "__main__":
             #     claw_position = 0
 
             #print(act_speed, carousel_turn, claw_position, microscope_position)
-            if(messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_position)):
+            if(messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_position) or numSameMessages > 5):
+                numSameMessages = 0
                 print("a new button is pressed, so a new packet is sent")
                 print(act_speed, carousel_turn, claw_position, microscope_position)
                 msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
                 science_socket.sendall(msg)
+            else:
+                numSameMessages+=1
+            # msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
+            # print(act_speed, carousel_turn, claw_position, microscope_position)
+            # science_socket.sendall(msg)
 
         """ Generate pyGame gui based on inputs from controller """
         claw_x = coord_u
