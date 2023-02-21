@@ -71,6 +71,8 @@ class ARTracker:
         
         # Initialize cameras
         self.caps=[]
+        if isinstance(self.cameras, int):
+            self.cameras = [self.cameras]
         for i in range(0, len(self.cameras)):
             #Makes sure the camera actually connects
             while True:
