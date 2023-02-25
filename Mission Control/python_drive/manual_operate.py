@@ -89,6 +89,7 @@ FPS = 20
 flash = False
 mode = 'drive'
 arm_installed = False
+sportMode = False
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # a remote socket where the IP/port are the ones on the microcontroller
@@ -143,11 +144,11 @@ def axistospeed(axispos):
     return fix((-axispos * 126) + 126)
 
 """ make a wheel message """
-def wheel_message(leftwheels, rightwheels, gimbalVert, gimbalHoriz):
+def wheel_message(leftwheels, rightwheels):
     msg =  bytearray([0x23, 0x00, # 0b00100011, 0b00000000
                     leftwheels[0], leftwheels[1], leftwheels[2], 
-                    rightwheels[0], rightwheels[1], rightwheels[2], gimbalVert, gimbalHoriz, 0x00])
-    msg[10] = sum(msg[2:10]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
+                    rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
+    msg[8] = sum(msg[2:7]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
     return msg
 """ make an arm message """
 def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir):
@@ -207,6 +208,7 @@ def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
     c_x = w/2
     c_y = h/2
 
+# determines if the current msg is different from the last. If equal, no need to send another message and busy up arduinos
 def messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_position):
     global old_act_speed
     global old_carousel_turn
@@ -218,6 +220,18 @@ def messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_posit
         old_claw_position = claw_position
         old_microscope_position = microscope_position
         return True
+    
+# this function will remap a value from one range to another. ex: map(5, 0, 10, 0, 100) will return 50
+def map(value, fromLow, fromHigh, toLow, toHigh):
+    # Figure out how 'wide' each range is
+    leftSpan = fromHigh - fromLow
+    rightSpan = toHigh - toLow
+
+    # Convert the left range into a 0-1 range (float)
+    valueScaled = float(value - fromLow) / float(leftSpan)
+
+    # Convert the 0-1 range into a value in the right range.
+    return toLow + (valueScaled * rightSpan)
 
 if __name__ == "__main__":
     running = True
@@ -232,7 +246,7 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             if event.type == pygame.JOYHATMOTION:
                 gim = joystick.get_hat(gimbal)
-                msg = wheel_message(leftwheels, rightwheels, gim[0]+1, gim[1]+1)
+                msg = wheel_message(leftwheels, rightwheels)
                 ebox_socket.sendall(msg)
 
             if event.type == pygame.KEYDOWN:
@@ -260,7 +274,7 @@ if __name__ == "__main__":
                     if mode == 'drive':
                         mode = 'operate'
                         print('mode has been changed to operate')
-                        msg = wheel_message([126]*3,[126]*3, 1, 1)
+                        msg = wheel_message([126]*3,[126]*3)
                         ebox_socket.sendall(msg)
                         print('sent',msg[2:8])
                         stopsent = True
@@ -271,7 +285,7 @@ if __name__ == "__main__":
                 if mode == 'drive':
                     print("drive mode")
                     # A in drive mode will turn lights blue/red
-                    if event.button == A_BUTTON:
+                    if event.button == A_BUTTON: # A button changes lights red/blue
                         print('lights')
                         if flash:
                             msg = lights(255,0,0)
@@ -279,10 +293,13 @@ if __name__ == "__main__":
                             msg = lights(0,0,255)
                         flash = not flash
                         ebox_socket.sendall(msg)
-                    if event.button == X_BUTTON:
+                    if event.button == X_BUTTON: # X button switches modes
                         print('toggleWheels')
                         msg = toggle_wheels()
                         ebox_socket.sendall(msg)
+                    if event.button == Y_BUTTON: # Y button toggles sport mode (max speed)
+                        print("Sport Mode = ", sportMode)
+                        sportMode = not sportMode
                 else:
                     if arm_installed:
                         if event.button == X_BUTTON:
@@ -328,7 +345,7 @@ if __name__ == "__main__":
             if abs(R_Y) > THRESHOLD_LOW:
                 # wheel #4 is the only one that needed to be reversed somehow
                 rightwheels = [axistospeed(R_Y)] * 3
-            else:
+            else:\
                 rightwheels = [126] * 3
             if abs(R_X) > THRESHOLD_LOW:
                 # right stick x value, unused for rn
@@ -345,16 +362,19 @@ if __name__ == "__main__":
                 rightwheels[0:3] = [126] * 3
             else:
                 halt = False
+            # if in sport mode, remap the values in each wheel to only max out at half speed (0 / 252 is full speed)
+            if(sportMode):
+                leftwheels = [int(map(wheel, 0, 252, 63, 189)) for wheel in leftwheels]
+                rightwheels = [int(map(wheel, 0, 252, 63, 189)) for wheel in rightwheels]
 
-            data = wheel_message(leftwheels, rightwheels, gim[0]+1, gim[1]+1) #gim+1 to avoid sending negative #s
-
+            data = wheel_message(leftwheels, rightwheels) #gim+1 to avoid sending negative #s
             if (isstopped(leftwheels,rightwheels)):
                 if not stopsent or halt:
-                    print('sent',data[2:10])
+                    print('sent',data[2:7])
                     ebox_socket.sendall(data)
                     stopsent = True
             else:
-                print('sent',data[2:10])
+                print('sent',data[2:7])
                 ebox_socket.sendall(data)
                 stopsent = False
                 
@@ -398,7 +418,7 @@ if __name__ == "__main__":
             if joystick.get_button(L_BUMPER):
                 claw_dir = 0
             elif joystick.get_button(R_BUMPER):
-                claw_dir = 255
+                claw_dir = 252
             else:
                 claw_dir = 126
 
@@ -426,7 +446,10 @@ if __name__ == "__main__":
             # send the data
             out = arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
             print(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
-            #arm_socket.sendall(out)
+            arm_socket.sendall(out)
+            # information, addr = arm_socket.recvfrom(1024) # 1024 is either num of bytes or num of bits to read from server socket
+            # print("\n\n Client recieved: ", information)
+            # print("Decoded message: ", information.decode('utf-8'), "\n\n")
 
         # send science package messages
         # Left/Right bumpers move carousel in sections.
@@ -439,28 +462,18 @@ if __name__ == "__main__":
             else:
                 act_speed = 127
 
-            # if (R_Y < -THRESHOLD_LOW): NOT USING DRILL THIS YEAR
-            #     drill_speed -= int(20 * R_Y)
-            #     drill_speed = 255 if drill_speed > 255 else drill_speed
-            #     print('HIGHER')
-            # if (R_Y > THRESHOLD_LOW):
-            #     drill_speed -= int(20 * R_Y) if drill_speed != 0 else 0
-            #     drill_speed = 0 if drill_speed < 0 else drill_speed
-            #     print('LOWER')
-            # drill_speed &= 0xff
-
-            # if (L_2 > .04): 
-            #     fan_speed -= int(20 * L_2) # decrements speed by 20. num can be 0-255. 127 to stop
-            #     fan_speed = 0 if fan_speed < 0 else fan_speed # prevents from going below 0
-            # elif (R_2 > .04):
-            #     fan_speed += int(20 * R_2)
-            #     fan_speed = 255 if fan_speed > 255 else fan_speed
-            if(abs(gim[1]) > THRESHOLD_HIGH):
-                microscope_position -= 5*gim[1] #gim[1]=-1 when down d-pad is pressed. +1 when up
-                if(microscope_position>180):
-                    microscope_position=180
-                elif(microscope_position<0):
-                    microscope_position=0
+            # if(abs(gim[1]) > THRESHOLD_HIGH):
+            #     microscope_position -= 5*gim[1] #gim[1]=-1 when down d-pad is pressed. +1 when up
+            #     if(microscope_position>180):
+            #         microscope_position=180
+            #     elif(microscope_position<0):
+            #         microscope_position=0
+            if(gim[1] < 0):
+                microscope_position = 0
+            elif(gim[1] > 0):
+                microscope_position = 2
+            else:
+                microscope_position = 1
 
             if (joystick.get_button(L_BUMPER)): 
                 carousel_turn = 0
@@ -469,23 +482,20 @@ if __name__ == "__main__":
             else:
                 carousel_turn = 1
 
-            # if joystick.get_button(A_BUTTON):
-            #     claw_position=180
-            # if joystick.get_button(X_BUTTON):
-            #     claw_position = 0
 
             #print(act_speed, carousel_turn, claw_position, microscope_position)
             if(messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_position) or numSameMessages > 5):
                 numSameMessages = 0
-                print("a new button is pressed, so a new packet is sent")
+                #print("a new button is pressed, so a new packet is sent")
                 print(act_speed, carousel_turn, claw_position, microscope_position)
                 msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
                 science_socket.sendall(msg)
             else:
                 numSameMessages+=1
+            # THIS SENDS MSGS REALLY FAST AND SLOWS DOWN THE ARDUINO NANO CAUSING DELAY, LEAVE UNTIL SWITCH TO TEENSY
             # msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
             # print(act_speed, carousel_turn, claw_position, microscope_position)
-            # science_socket.sendall(msg)
+            #science_socket.sendall(msg)
 
         """ Generate pyGame gui based on inputs from controller """
         claw_x = coord_u
