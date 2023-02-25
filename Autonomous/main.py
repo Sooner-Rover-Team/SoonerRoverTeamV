@@ -12,14 +12,14 @@ mbedPort=1001
 
 flashing = False
 
-def flash():                                  #turns on LEDS around the electrical box 
+def flash():
     while flashing:
         UDPOut.sendLED(mbedIP, mbedPort, 'g')
         sleep(.2)
         UDPOut.sendLED(mbedIP, mbedPort, 'o')
         sleep(.2)
 
-argParser = argparse.ArgumentParser() #helps to specify argunements, such as camera input and logitude and latitude in a txt file
+argParser = argparse.ArgumentParser()
 argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
 argParser.add_argument("-ll", "--latLong", type=str, help="takes a filename for a text file, then reads that file for latlong coordinates")
 args = argParser.parse_args()
@@ -29,16 +29,15 @@ def drive(rover, id1, id2=-1):
     global flashing
     locations = []
 
-    if args.latLong is not None: #essentially opens the txt file for latitude and longitude and lets the user read it
+    if args.latLong is not None:
         with open(args.latLong) as f:
-            #Parses the file for coordinates
             lineNum = 0
             for line in f:
                 lineNum += 1
                 try:
-                    coords = [float(item.replace('\ufeff',"")) for item in line.strip().split()] #replaces the \ufeff with nothing
+                    coords = [float(item.replace('\ufeff',"")) for item in line.strip().split()]
                 except:
-                    print("Parse Error on line " + str(lineNum) + ": Please enter <lat long>") #error handling incase of a parse error
+                    print("Parse Error on line " + str(lineNum) + ": Please enter <lat long>")
                     break
                 else:
                     if len(coords) != 2:
@@ -47,35 +46,35 @@ def drive(rover, id1, id2=-1):
                     locations.append(coords)
             f.close()
 
-    flashing = False #turns off the LEDS
+    flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
-    found = rover.driveAlongCoordinates(locations,id1, id2) #sets color to red and drives to the coordinates
+    found = rover.driveAlongCoordinates(locations,id1, id2)
     
     if id1 != -1:
         rover.trackARMarker(id1, id2)
     
-    flashing=True #turns on the LEDS
+    flashing=True
     lights = threading.Thread(target=flash)
     lights.start()
     #UDPOut.sendLED(mbedIP, mbedPort, 'g')
 
-if __name__ == "__main__": #main function
-    os.chdir(path) #changes the directory to the path
-    print(os.getcwd()) #prints the current directory
+if __name__ == "__main__":
+    os.chdir(path)
+    print(os.getcwd())
     #user input (args from system)
-    if args.cameraInput is None: #error handling incase of no camera input
+    if args.cameraInput is None:
         print("ERROR: must at least specify one camera")
-        exit(-1) #terminates program
+        exit(-1)
     
     #gets the mbed ip and port
-    config = configparser.ConfigParser(allow_no_value=True) #opens the config file
-    if not config.read('config.ini'): 
-        print("DID NOT OPEN CONFIG") #error handling incase of no config file
+    config = configparser.ConfigParser(allow_no_value=True)
+    if not config.read('config.ini'):
+        print("DID NOT OPEN CONFIG")
         exit(-2)
-    mbedIP = str(config['CONFIG']['MBED_IP']) #connecting our embed to the rover which control the microcontrollers in the wheels
-    mbedPort = int(config['CONFIG']['MBED_PORT']) #connecting our embed to the rover which control the microcontrollers in the wheels
+    mbedIP = str(config['CONFIG']['MBED_IP'])
+    mbedPort = int(config['CONFIG']['MBED_PORT'])
 
-    rover = Drive.Drive(50, args.cameraInput) #sets the speed of the rover and the camera input
+    rover = Drive.Drive(50, args.cameraInput)
 #    drive(rover, -1)
 #    drive(rover, -1)
 #    drive(rover, -1)
