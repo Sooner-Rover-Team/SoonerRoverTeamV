@@ -1,16 +1,17 @@
-import os
-path = (os.path.dirname(os.path.abspath(__file__)))
-import argparse
-import configparser
-from libs import UDPOut
-from libs import Drive
-import threading
 from time import sleep
+import threading
+from libs import Drive
+from libs import UDPOut
+import configparser
+import argparse
+import os
+path = (os.path.dirname(os.path.abspath(__file__))) # root directory of main.py
 
-mbedIP='10.0.0.101'
-mbedPort=1001
+mbedIP = '10.0.0.101'
+mbedPort = 1001
 
 flashing = False
+
 
 def flash():
     while flashing:
@@ -19,66 +20,78 @@ def flash():
         UDPOut.sendLED(mbedIP, mbedPort, 'o')
         sleep(.2)
 
-argParser = argparse.ArgumentParser()
-argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
-argParser.add_argument("-ll", "--latLong", type=str, help="takes a filename for a text file, then reads that file for latlong coordinates")
+# command-line arguments
+argParser = argparse.ArgumentParser(prog = "main.py", description="The primary program used to control the rover", epilog="https://github.com/Sooner-Rover-Team/")
+argParser.add_argument("-ci", "--cameraInput", "--camera", "cameraInput", dest="camera_input", type=int, required="True",
+                       help="takes a number representing which camera to use")
+argParser.add_argument("-ll", "--latLong", dest="lat_long", type=str,
+                       help="takes a filename for a text file, then reads that file for latlong coordinates")
+argParser.add_argument("-AR", "--marker", dest="marker", type=int, nargs='+',
+                       help="Takes one or two numbers to represent which marker(s) to aim for. Please provide at least one number, with the next separated by a space.")
+argParser.add_argument("--version", action="version", version="0.0.0 (25 Feb 2023)")
 args = argParser.parse_args()
-#Gets a list of coordinates from user and drives to them and then tracks the tag
-#Set id1 to -1 if not looking for a tag
+
+# extract args
+camera_input_number = args.camera_input
+lat_long_file_name = args.lat_long
+marker = args.marker 
+
+
+# Gets a list of coordinates from user and drives to them and then tracks the tag
+# Set id1 to -1 if not looking for a tag
 def drive(rover, id1, id2=-1):
     global flashing
     locations = []
 
-    if args.latLong is not None:
-        with open(args.latLong) as f:
+    if lat_long_file_name is not None:
+        with open(lat_long_file_name) as f:
             lineNum = 0
             for line in f:
                 lineNum += 1
                 try:
-                    coords = [float(item.replace('\ufeff',"")) for item in line.strip().split()]
+                    coords = [float(item.replace('\ufeff', ""))
+                              for item in line.strip().split()]
                 except:
-                    print("Parse Error on line " + str(lineNum) + ": Please enter <lat long>")
+                    print("Parse Error on line " + str(lineNum) +
+                          ": Please enter <lat long>")
                     break
                 else:
                     if len(coords) != 2:
-                        print("Error on line " + str(lineNum) + ": Insufficient number of coordinates. Please enter <lat long>")
-                        break        
+                        print("Error on line " + str(lineNum) +
+                              ": Insufficient number of coordinates. Please enter <lat long>")
+                        break
                     locations.append(coords)
             f.close()
 
     flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
-    found = rover.driveAlongCoordinates(locations,id1, id2)
-    
+    found = rover.driveAlongCoordinates(locations, id1, id2)
+
     if id1 != -1:
         rover.trackARMarker(id1, id2)
-    
-    flashing=True
+
+    flashing = True
     lights = threading.Thread(target=flash)
     lights.start()
-    #UDPOut.sendLED(mbedIP, mbedPort, 'g')
+    # UDPOut.sendLED(mbedIP, mbedPort, 'g')
+
 
 if __name__ == "__main__":
     os.chdir(path)
     print(os.getcwd())
-    #user input (args from system)
-    if args.cameraInput is None:
-        print("ERROR: must at least specify one camera")
-        exit(-1)
-    
-    #gets the mbed ip and port
+
+    # gets the mbed ip and port
     config = configparser.ConfigParser(allow_no_value=True)
+    
     if not config.read('config.ini'):
         print("DID NOT OPEN CONFIG")
         exit(-2)
+        
     mbedIP = str(config['CONFIG']['MBED_IP'])
     mbedPort = int(config['CONFIG']['MBED_PORT'])
 
-    rover = Drive.Drive(50, args.cameraInput)
-#    drive(rover, -1)
-#    drive(rover, -1)
-#    drive(rover, -1)
-   # drive(rover, 1)
-    drive(rover, 2)
-   # drive(rover, 3)
-    drive(rover, 4,5)
+    rover = Drive.Drive(50, camera_input_number)
+    if (marker.len == 2):
+        drive(rover, marker[0], marker[1])
+    else:
+        drive(rover, marker[0])
