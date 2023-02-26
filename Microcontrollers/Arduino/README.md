@@ -1,13 +1,22 @@
 # Arduino Code :100:
 
+### current_code 
+    contains the up-to-date code running on the arduinos on REMI.
+
+### past_code 
+    contains any program someone has made in the past for arduino that are no longer in use.
+
+### examples 
+    contains test scripts designed to make testing motors and arduino accessories easy.
+
 Required libraries (install them from the built in library manager):
 * EtherCard (1.1.0)
   * Only needed for using the Arduino Nano ethernet shield. The Uno-style shield (on the Megas) uses the built in ethernet library.
   * [GitHub](https://github.com/njh/EtherCard)
 
-The "capstone arm" folder is full of other Arduino programs that were indended for the belt driven arm we did not end up using.
 
-## Testing Programs
+
+<!-- ## Testing Programs
 
 ### servo_test.ino
 
@@ -24,4 +33,4 @@ This should be uploaded to the Arduino Nano in the e-box. The macro `#define DEB
 
 ### arm_controller.ino
 
-This is the code for the Arduino Nano controlling the currently used arm (the one with linear actuators). Like the wheel controller, it also has the optional debug macro.
+This is the code for the Arduino Nano controlling the currently used arm (the one with linear actuators). Like the wheel controller, it also has the optional debug macro. -->
