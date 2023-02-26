@@ -6,7 +6,7 @@
                |
      1,9     0-|-0   -4,12
                |
-    -2,20     0-|-0   -5,13
+    -2,20    0-|-0   -5,13
      "-" indicaes wheel's polarity needs to be reversed
 
      gimbal pan: D6
@@ -50,6 +50,8 @@ int checkSum = 0; // used to check for errors in recieved message.
 int vertPos = 90; // position of gimbal
 int horizPos = 90; 
 Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
+Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
+bool wheelReverse[6] = {true, false, false, true, false, true};
 // PWM on mega is D2-D13. Using D8-13 for wheels, D7/D6 for gimbal, and D19/D20/D21 for LEDs
 
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
@@ -62,12 +64,12 @@ void setup() {
   //Ethernet.init(20);  // Teensy++ 2.0
   //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
   //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
-  wheel0.attach(2, 900, 2100);
-  wheel1.attach(3, 900, 2100);
-  wheel2.attach(4, 900, 2100);
-  wheel3.attach(5, 900, 2100);
-  wheel4.attach(6, 900, 2100);
-  wheel5.attach(7, 900, 2100);
+  wheel0.attach(2, 1000, 2000);
+  wheel1.attach(3, 1000, 2000);
+  wheel2.attach(4, 1000, 2000);
+  wheel3.attach(5, 1000, 2000);
+  wheel4.attach(6, 1000, 2000);
+  wheel5.attach(7, 1000, 2000);
 
   gimbalVert.attach(8);
   gimbalHoriz.attach(9);
@@ -185,20 +187,36 @@ void update(char msg[], int msgSize) {
     /**************WHEEL MSG *****************/
     else if (msg[1] == WHEEL) {
       if(msgSize == 9) {
-        for(int i=2; i<8; ++i) { 
+        for(int i=2; i<8; i++) { 
           checkSum += msg[i];
         }
         checkSum = checkSum & 0xff;
-        Serial.println(checkSum);
+        #if DEBUG
+          // Serial.print("Calcuated checksum: ");
+          // Serial.println(checkSum);
+          // Serial.print("Received checksum: ");
+          // Serial.println((int)msg[8]);
+        #endif
         if(checkSum == uint8_t(msg[8])) {
           timeOut = millis(); // save time so we know how long it's been between this and next msg
-          wheel0.write(map(uint8_t(msg[2]), 252, 0, 0, 180));
-          wheel1.write(map(uint8_t(msg[3]), 0, 252, 0, 180));
-          wheel2.write(map(uint8_t(msg[4]), 0, 252, 0, 180)); // 0
-          wheel3.write(map(uint8_t(msg[5]), 252, 0, 0, 180));
-          wheel4.write(map(uint8_t(msg[6]), 0, 252, 0, 180));
-          wheel5.write(map(uint8_t(msg[7]), 252, 0, 0, 180));
-          
+          long int speed;
+          for (int i = 0; i < 6; i++) {
+            if (wheelReverse[i]) {
+              // speed = map(uint8_t(msg[i+2]), 252, 0, 0, 180);
+              // wheels[i].write(speed);
+              wheels[i].write(map(uint8_t(msg[i+2]), 252, 0, 0, 180));
+            } else {
+              // speed = map(uint8_t(msg[i+2]), 0, 252, 0, 180);
+              // wheels[i].write(speed);
+              wheels[i].write(map(uint8_t(msg[i+2]), 0, 252, 0, 180));
+
+            }
+            #if DEBUG
+              Serial.print(i);
+              Serial.print(": ");
+              Serial.println(speed);
+            #endif
+          }          
           //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9]));
         }
         else {
@@ -231,20 +249,20 @@ void loop() {
   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize) {
-    // #if DEBUG
-    // Serial.print("Received packet of size ");
-    // Serial.println(packetSize);
-    // Serial.print("From ");
-    // IPAddress remote = Udp.remoteIP();
-    // for (int i=0; i < 4; i++) {
-    //   Serial.print(remote[i], DEC);
-    //   if (i < 3) {
-    //     Serial.print(".");
-    //   }
-    // }
-    // Serial.print(", port ");
-    // Serial.println(Udp.remotePort());
-    // #endif
+    #if DEBUG
+    Serial.print("Received packet of size ");
+    Serial.println(packetSize);
+    Serial.print("From ");
+    IPAddress remote = Udp.remoteIP();
+    for (int i=0; i < 4; i++) {
+      Serial.print(remote[i], DEC);
+      if (i < 3) {
+        Serial.print(".");
+      }
+    }
+    Serial.print(", port ");
+    Serial.println(Udp.remotePort());
+    #endif
     // read the packet into packetBuffer
     Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
     update(packetBuffer, packetSize);
