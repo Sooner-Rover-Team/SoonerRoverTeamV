@@ -47,14 +47,34 @@ int checkSum = 0; // used to check for errors in recieved message.
 #define bluePin 25
 #define LED 0x02
 #define WHEEL 0x00
+
+
 int vertPos = 90; // position of gimbal
 int horizPos = 90; 
+
 Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
 Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
 bool wheelReverse[6] = {true, false, false, true, false, true};
 // PWM on mega is D2-D13. Using D8-13 for wheels, D7/D6 for gimbal, and D19/D20/D21 for LEDs
 
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
+
+// super awesome fun proportional wheel control variables
+bool proportionalControl = true;
+int targetSpeeds[6] = {126, 126, 126, 126, 126, 126};
+double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
+
+unsigned long lastLoop = 0; // milli time of last loop
+double deltaLoop = 0.0; // seconds since last loop
+
+double Kp = 1.0; // proportional change between target and current
+
+double error[6];
+
+// define time in microseconds of width of pulse
+const int PWM_LOW = 1000;
+const int PWM_HIGH = 2000;
+const int PWM_NEUTRAL = 1500; 
 
 void setup() {
   // You can use Ethernet.init(pin) to configure the CS pin
@@ -64,12 +84,12 @@ void setup() {
   //Ethernet.init(20);  // Teensy++ 2.0
   //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
   //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
-  wheel0.attach(2, 1000, 2000);
-  wheel1.attach(3, 1000, 2000);
-  wheel2.attach(4, 1000, 2000);
-  wheel3.attach(5, 1000, 2000);
-  wheel4.attach(6, 1000, 2000);
-  wheel5.attach(7, 1000, 2000);
+  wheel0.attach(2);
+  wheel1.attach(3);
+  wheel2.attach(4);
+  wheel3.attach(5);
+  wheel4.attach(6);
+  wheel5.attach(7);
 
   gimbalVert.attach(8);
   gimbalHoriz.attach(9);
@@ -199,23 +219,9 @@ void update(char msg[], int msgSize) {
         #endif
         if(checkSum == uint8_t(msg[8])) {
           timeOut = millis(); // save time so we know how long it's been between this and next msg
-          long int speed;
+          // set the appropriate target speeds
           for (int i = 0; i < 6; i++) {
-            if (wheelReverse[i]) {
-              // speed = map(uint8_t(msg[i+2]), 252, 0, 0, 180);
-              // wheels[i].write(speed);
-              wheels[i].write(map(uint8_t(msg[i+2]), 252, 0, 0, 180));
-            } else {
-              // speed = map(uint8_t(msg[i+2]), 0, 252, 0, 180);
-              // wheels[i].write(speed);
-              wheels[i].write(map(uint8_t(msg[i+2]), 0, 252, 0, 180));
-
-            }
-            #if DEBUG
-              Serial.print(i);
-              Serial.print(": ");
-              Serial.println(speed);
-            #endif
+            targetSpeeds[i] = (uint8_t)msg[i+2];
           }          
           //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9]));
         }
@@ -244,25 +250,30 @@ void update(char msg[], int msgSize) {
   }
 }
 
+double clip(double value, double low, double high) {
+  if (value < low) value = low;
+  if (value > high) value = high;
+  return value;
+}
 
 void loop() {
   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize) {
-    #if DEBUG
-    Serial.print("Received packet of size ");
-    Serial.println(packetSize);
-    Serial.print("From ");
-    IPAddress remote = Udp.remoteIP();
-    for (int i=0; i < 4; i++) {
-      Serial.print(remote[i], DEC);
-      if (i < 3) {
-        Serial.print(".");
-      }
-    }
-    Serial.print(", port ");
-    Serial.println(Udp.remotePort());
-    #endif
+    // #if DEBUG
+    // Serial.print("Received packet of size ");
+    // Serial.println(packetSize);
+    // Serial.print("From ");
+    // IPAddress remote = Udp.remoteIP();
+    // for (int i=0; i < 4; i++) {
+    //   Serial.print(remote[i], DEC);
+    //   if (i < 3) {
+    //     Serial.print(".");
+    //   }
+    // }
+    // Serial.print(", port ");
+    // Serial.println(Udp.remotePort());
+    // #endif
     // read the packet into packetBuffer
     Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
     update(packetBuffer, packetSize);
@@ -275,18 +286,51 @@ void loop() {
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
-    wheel0.write(90);
-    wheel1.write(90);
-    wheel2.write(90);
-    wheel3.write(90);
-    wheel4.write(90);
-    wheel5.write(90);
+    for (int i = 0; i < 6; i++) {
+      wheels[i].writeMicroseconds(PWM_NEUTRAL);
+      currentSpeeds[i] = 126;
+      targetSpeeds[i] = 126;
+    }
+    // wheel3.writeMicroseconds(1500);
     gimbalVert.write(90);
     gimbalHoriz.write(90);
 
     #if DEBUG
     Serial.println("Stopped motors");
     #endif
+  } else {
+    deltaLoop = (millis() - lastLoop)/1000.0;
+    for (int i = 0; i < 6; i++) {
+      // if using proportional control, look at the difference between the current and desired speed
+      if (proportionalControl) {
+        error[i] = targetSpeeds[i] - currentSpeeds[i];
+        double output = error[i]*Kp*deltaLoop;
+        currentSpeeds[i] += output; 
+      } else {
+        currentSpeeds[i] = targetSpeeds[i];
+      }
+      // if the target is to stop, set the current to that as well
+      if (targetSpeeds[i] == 126) currentSpeeds[i] = 126;
+      // also clip the current speed value just to be safe
+      currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
+      if (wheelReverse[i]) {
+        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 252, 0, PWM_LOW, PWM_HIGH));        
+      } else {
+        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 0, 252, PWM_LOW, PWM_HIGH));
+      }
+
+      // just debugging stuff
+      if (i == 3) {
+        // Serial.println(wheels[0].read());
+      //   Serial.print("ts: ");
+      //   Serial.print(targetSpeeds[i]);
+      //   Serial.print(", cs: ");
+        Serial.println(currentSpeeds[i]);      
+      }
+
+    }
+    // remember milli time of the last loop
+    lastLoop = millis();
   }
   delay(10);
 }
