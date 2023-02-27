@@ -89,7 +89,7 @@ FPS = 20
 flash = False
 mode = 'drive'
 arm_installed = False
-sportMode = False
+sportMode = True
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # a remote socket where the IP/port are the ones on the microcontroller
@@ -148,7 +148,7 @@ def wheel_message(leftwheels, rightwheels):
     msg =  bytearray([0x23, 0x00, # 0b00100011, 0b00000000
                     leftwheels[0], leftwheels[1], leftwheels[2], 
                     rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
-    msg[8] = sum(msg[2:7]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
+    msg[8] = sum(msg[2:8]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
     return msg
 """ make an arm message """
 def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir):
@@ -222,7 +222,7 @@ def messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_posit
         return True
     
 # this function will remap a value from one range to another. ex: map(5, 0, 10, 0, 100) will return 50
-def map(value, fromLow, fromHigh, toLow, toHigh):
+def val_map(value, fromLow, fromHigh, toLow, toHigh):
     # Figure out how 'wide' each range is
     leftSpan = fromHigh - fromLow
     rightSpan = toHigh - toLow
@@ -363,18 +363,18 @@ if __name__ == "__main__":
             else:
                 halt = False
             # if in sport mode, remap the values in each wheel to only max out at half speed (0 / 252 is full speed)
-            if(sportMode):
-                leftwheels = [int(map(wheel, 0, 252, 63, 189)) for wheel in leftwheels]
-                rightwheels = [int(map(wheel, 0, 252, 63, 189)) for wheel in rightwheels]
+            if sportMode:
+                leftwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in leftwheels]
+                rightwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in rightwheels]
 
             data = wheel_message(leftwheels, rightwheels) #gim+1 to avoid sending negative #s
             if (isstopped(leftwheels,rightwheels)):
                 if not stopsent or halt:
-                    print('sent',data[2:7])
+                    print('sent',str([int(x) for x in data[2:8]]), int(data[8]))
                     ebox_socket.sendall(data)
                     stopsent = True
             else:
-                print('sent',data[2:7])
+                print('sent',str([int(x) for x in data[2:8]]), int(data[8]))
                 ebox_socket.sendall(data)
                 stopsent = False
                 

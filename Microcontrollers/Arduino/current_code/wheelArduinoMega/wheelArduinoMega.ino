@@ -6,7 +6,7 @@
                |
      1,9     0-|-0   -4,12
                |
-    -2,20     0-|-0   -5,13
+    -2,20    0-|-0   -5,13
      "-" indicaes wheel's polarity needs to be reversed
 
      gimbal pan: D6
@@ -47,12 +47,34 @@ int checkSum = 0; // used to check for errors in recieved message.
 #define bluePin 25
 #define LED 0x02
 #define WHEEL 0x00
+
+
 int vertPos = 90; // position of gimbal
 int horizPos = 90; 
+
 Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
+Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
+bool wheelReverse[6] = {true, false, false, true, false, true};
 // PWM on mega is D2-D13. Using D8-13 for wheels, D7/D6 for gimbal, and D19/D20/D21 for LEDs
 
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
+
+// super awesome fun proportional wheel control variables
+bool proportionalControl = true;
+int targetSpeeds[6] = {126, 126, 126, 126, 126, 126};
+double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
+
+unsigned long lastLoop = 0; // milli time of last loop
+double deltaLoop = 0.0; // seconds since last loop
+
+double Kp = 1.0; // proportional change between target and current
+
+double error[6];
+
+// define time in microseconds of width of pulse
+const int PWM_LOW = 1000;
+const int PWM_HIGH = 2000;
+const int PWM_NEUTRAL = 1500; 
 
 void setup() {
   // You can use Ethernet.init(pin) to configure the CS pin
@@ -62,12 +84,12 @@ void setup() {
   //Ethernet.init(20);  // Teensy++ 2.0
   //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
   //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
-  wheel0.attach(2, 900, 2100);
-  wheel1.attach(3, 900, 2100);
-  wheel2.attach(4, 900, 2100);
-  wheel3.attach(5, 900, 2100);
-  wheel4.attach(6, 900, 2100);
-  wheel5.attach(7, 900, 2100);
+  wheel0.attach(2);
+  wheel1.attach(3);
+  wheel2.attach(4);
+  wheel3.attach(5);
+  wheel4.attach(6);
+  wheel5.attach(7);
 
   gimbalVert.attach(8);
   gimbalHoriz.attach(9);
@@ -185,20 +207,22 @@ void update(char msg[], int msgSize) {
     /**************WHEEL MSG *****************/
     else if (msg[1] == WHEEL) {
       if(msgSize == 9) {
-        for(int i=2; i<8; ++i) { 
+        for(int i=2; i<8; i++) { 
           checkSum += msg[i];
         }
         checkSum = checkSum & 0xff;
-        Serial.println(checkSum);
+        #if DEBUG
+          // Serial.print("Calcuated checksum: ");
+          // Serial.println(checkSum);
+          // Serial.print("Received checksum: ");
+          // Serial.println((int)msg[8]);
+        #endif
         if(checkSum == uint8_t(msg[8])) {
           timeOut = millis(); // save time so we know how long it's been between this and next msg
-          wheel0.write(map(uint8_t(msg[2]), 252, 0, 0, 180));
-          wheel1.write(map(uint8_t(msg[3]), 0, 252, 0, 180));
-          wheel2.write(map(uint8_t(msg[4]), 0, 252, 0, 180)); // 0
-          wheel3.write(map(uint8_t(msg[5]), 252, 0, 0, 180));
-          wheel4.write(map(uint8_t(msg[6]), 0, 252, 0, 180));
-          wheel5.write(map(uint8_t(msg[7]), 252, 0, 0, 180));
-          
+          // set the appropriate target speeds
+          for (int i = 0; i < 6; i++) {
+            targetSpeeds[i] = (uint8_t)msg[i+2];
+          }          
           //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9]));
         }
         else {
@@ -226,6 +250,11 @@ void update(char msg[], int msgSize) {
   }
 }
 
+double clip(double value, double low, double high) {
+  if (value < low) value = low;
+  if (value > high) value = high;
+  return value;
+}
 
 void loop() {
   // if there's data available, read a packet
@@ -257,18 +286,51 @@ void loop() {
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
-    wheel0.write(90);
-    wheel1.write(90);
-    wheel2.write(90);
-    wheel3.write(90);
-    wheel4.write(90);
-    wheel5.write(90);
+    for (int i = 0; i < 6; i++) {
+      wheels[i].writeMicroseconds(PWM_NEUTRAL);
+      currentSpeeds[i] = 126;
+      targetSpeeds[i] = 126;
+    }
+    // wheel3.writeMicroseconds(1500);
     gimbalVert.write(90);
     gimbalHoriz.write(90);
 
     #if DEBUG
     Serial.println("Stopped motors");
     #endif
+  } else {
+    deltaLoop = (millis() - lastLoop)/1000.0;
+    for (int i = 0; i < 6; i++) {
+      // if using proportional control, look at the difference between the current and desired speed
+      if (proportionalControl) {
+        error[i] = targetSpeeds[i] - currentSpeeds[i];
+        double output = error[i]*Kp*deltaLoop;
+        currentSpeeds[i] += output; 
+      } else {
+        currentSpeeds[i] = targetSpeeds[i];
+      }
+      // if the target is to stop, set the current to that as well
+      if (targetSpeeds[i] == 126) currentSpeeds[i] = 126;
+      // also clip the current speed value just to be safe
+      currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
+      if (wheelReverse[i]) {
+        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 252, 0, PWM_LOW, PWM_HIGH));        
+      } else {
+        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 0, 252, PWM_LOW, PWM_HIGH));
+      }
+
+      // just debugging stuff
+      if (i == 3) {
+        // Serial.println(wheels[0].read());
+      //   Serial.print("ts: ");
+      //   Serial.print(targetSpeeds[i]);
+      //   Serial.print(", cs: ");
+        Serial.println(currentSpeeds[i]);      
+      }
+
+    }
+    // remember milli time of the last loop
+    lastLoop = millis();
   }
   delay(10);
 }
