@@ -5,12 +5,78 @@ import configparser
 import sys
 from time import sleep
 import os
+import signal
 '''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
 sys.path.append(darknetPath)
 from darknet_images import *
 from darknet import load_network
 '''
+
+def drawBorderAndLabel(image, corners, markerIDs, myIDs, distance, angle):
+    # extract the marker corners (which are always returned in
+    # top-left, top-right, bottom-right, and bottom-left order)
+
+    tag1corners = []
+    tag2corners = []
+    for (markerCorner, markerID) in zip(corners, markerIDs):
+        if markerID in myIDs:
+            corners = markerCorner.reshape((4, 2))
+            
+            (topLeft, topRight, bottomRight, bottomLeft) = corners
+            # convert each of the (x, y)-coordinate pairs to integers
+            topRight = (int(topRight[0]), int(topRight[1]))
+            bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+            bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+            topLeft = (int(topLeft[0]), int(topLeft[1]))
+
+            if len(myIDs) == 2:
+                if markerID == myIDs[0]:
+                    tag1corners = corners
+                if markerID == myIDs[1]:
+                    tag2corners = corners
+
+            # draw the bounding box of the ArUCo detection
+            cv2.line(image, topLeft, topRight, (0, 255, 0), 2)
+            cv2.line(image, topRight, bottomRight, (0, 255, 0), 2)
+            cv2.line(image, bottomRight, bottomLeft, (0, 255, 0), 2)
+            cv2.line(image, bottomLeft, topLeft, (0, 255, 0), 2)
+
+            # compute and draw the center (x, y)-coordinates of the ArUco
+            # marker
+            cX = int((topLeft[0] + bottomRight[0]) / 2.0)
+            cY = int((topLeft[1] + bottomRight[1]) / 2.0)
+            cv2.circle(image, (cX, cY), 4, (0, 255, 0), -1)
+
+            # draw the ArUco marker ID on the image
+            cv2.putText(image, str(markerID),
+                (topLeft[0], topLeft[1] - 15), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (0, 255, 0), 2)
+        
+        if len(myIDs) is 2 and len(tag1corners) > 0 and len(tag2corners) > 0:
+
+            tag1cX = int((tag1corners[0][0] + tag1corners[2][0]) / 2.0)
+            tag1cY = int((tag1corners[0][1] + tag1corners[2][1]) / 2.0)
+
+            tag2cX = int((tag2corners[0][0] + tag2corners[2][0]) / 2.0)
+            tag2cY = int((tag2corners[0][1] + tag2corners[2][1]) / 2.0)
+
+            #cv2.line(image, cX, cY, (0, 255, 0), 2)
+            midX = int((tag1cX + tag2cX) / 2.0)
+            midY = int((tag1cY + tag2cY) / 2.0)
+            cv2.line(image, (tag1cX, tag1cY), (tag2cX, tag2cY), (0, 255, 0), 2)
+            cv2.circle(image, (midX, midY), 7, (255, 0, 0), -1)
+        
+        # Draw distance and angle in top left corner
+        distance = round(distance, 5)
+        angle = round(angle, 3)
+        cv2.rectangle(image, (0, 0), (400, 120), 0, -1)
+        strDistance = "Distance: " + str(distance)
+        cv2.putText(image, strDistance, (30,40), cv2.FONT_HERSHEY_SIMPLEX,
+                    1, (0,255,0), 1, cv2.LINE_AA)
+        strAngle = "Angle to: " + str(angle)
+        cv2.putText(image, strAngle, (30,80), cv2.FONT_HERSHEY_SIMPLEX,
+                    1, (0,255,0), 1, cv2.LINE_AA)
 
 class ARTracker:
 
@@ -27,6 +93,7 @@ class ARTracker:
         self.useYOLO = useYOLO
         self.cameras = cameras
         
+
         # Open the config file
         config = configparser.ConfigParser(allow_no_value=True)
         if not config.read(configFile):
@@ -63,11 +130,11 @@ class ARTracker:
 
         # Initialize video writer, fps is set to 5
         if self.write:
-            self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(
-                self.format[0], self.format[1], self.format[2], self.format[3]), 5, (self.frameWidth, self.frameHeight), False)
+            self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]),
+                                               20, (self.frameWidth, self.frameHeight))
         
         # Set the ar marker dictionary
-        self.markerDict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+        self.markerDict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         
         # Initialize cameras
         self.caps=[]
@@ -91,7 +158,6 @@ class ARTracker:
                 else:
                     self.caps.append(cam)
                     break
-
 
     #helper method to convert YOLO detections into the aruco corners format
     def _convertToCorners(self,detections, numCorners):
@@ -146,6 +212,8 @@ class ARTracker:
                     if self.index1 != -1:
                         print("Found the correct marker!")
                         if self.write:
+                            drawBorderAndLabel(bw, self.corners, self.markerIDs, [id1], self.distanceToMarker, self.angleToMarker)
+                            cv2.imshow("debug frame", bw)
                             self.videoWriter.write(bw)   #purely for debug   
                             cv2.waitKey(1)
                         break                    
@@ -167,6 +235,8 @@ class ARTracker:
                     if self.index1 != -1 and self.index2 != -1:
                         print('Found both markers!')
                         if self.write:
+                            drawBorderAndLabel(bw, self.corners, self.markerIDs, [id1, id2], self.distanceToMarker, self.angleToMarker)
+                            cv2.imshow("debug window", bw)
                             self.videoWriter.write(bw)   #purely for debug   
                             cv2.waitKey(1)
                         break                        
@@ -217,7 +287,8 @@ class ARTracker:
             self.angleToMarker = self.degreesPerPixel * (centerXMarker - self.frameWidth/2)
         
             '''
-            distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
+            di
+             \ focalLengthOfCamera) / pixelWidthOfMarker
             focalLength = focal length at 0 degrees horizontal and 0 degrees vertical
             focalLength30H = focal length at 30 degreees horizontal and 0 degrees vertical
             focalLength30V = focal length at 30 degrees vertical and 0 degrees horizontal
@@ -284,3 +355,4 @@ class ARTracker:
                 return True
 
         return False
+    

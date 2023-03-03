@@ -23,6 +23,7 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument("cameraInput", type=int, help="takes a number representing which camera to use")
 argParser.add_argument("-ll", "--latLong", type=str, help="takes a filename for a text file, then reads that file for latlong coordinates")
 args = argParser.parse_args()
+
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
 def drive(rover, id1, id2=-1):
@@ -56,7 +57,7 @@ def drive(rover, id1, id2=-1):
     flashing=True
     lights = threading.Thread(target=flash)
     lights.start()
-    #UDPOut.sendLED(mbedIP, mbedPort, 'g')
+    UDPOut.sendLED(mbedIP, mbedPort, 'g')
 
 if __name__ == "__main__":
     os.chdir(path)
@@ -75,10 +76,10 @@ if __name__ == "__main__":
     mbedPort = int(config['CONFIG']['MBED_PORT'])
 
     rover = Drive.Drive(50, args.cameraInput)
-#    drive(rover, -1)
-#    drive(rover, -1)
-#    drive(rover, -1)
-   # drive(rover, 1)
+    #drive(rover, -1)
+    #drive(rover, -1)
+    #drive(rover, -1)
+    #drive(rover, 1)
     drive(rover, 2)
-   # drive(rover, 3)
+    #drive(rover, 3)
     drive(rover, 4,5)
