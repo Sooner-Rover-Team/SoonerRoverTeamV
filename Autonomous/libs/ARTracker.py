@@ -236,7 +236,7 @@ class ARTracker:
                     if len(self.markerIDs) == 1: 
                        print('Only found marker ', self.markerIDs[0])
                     else:
-                        for j in range(len(self.markerIDs) - 1, -1,-1): #I trust the biggest markers the most
+                        for j in range(len(self.markerIDs) - 1, -1,-1): # Trust the biggest markers first
                             if self.markerIDs[j][0] == id1:
                                 self.index1 = j 
                             elif self.markerIDs[j][0] == id2:
@@ -245,41 +245,38 @@ class ARTracker:
                         print('Found both markers!')
                         if self.write:
                             self.__drawBorderAndLabel(bw, [id1, id2])
-                            cv2.imshow("debug window", bw)
-                            self.videoWriter.write(bw)   #purely for debug   
-                            cv2.waitKey(1)
+                            self.videoWriter.write(bw)
                         break                        
                      
-            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco                
-                #Checks to see if yolo can find a tag
+            if i == 220:  # Did not find any AR markers with any b&w cutoff using aruco                
+                # Check to see if YOLO can find the markers
                 if self.useYOLO:
                     detections = []
                     if not self.write:
-                        #this is a simpler detection function that doesn't return the image
+                        # A simpler detection function that doesn't return the image
                         detections = simple_detection(image, self.network, self.class_names, self.thresh)
                     else:
-                        #more complex detection that returns the image to be written
+                        # A more complex detection that returns the image to be written
                         image, detections = complex_detection(image, self.network, self.class_names, self.class_colors, self.thresh)
-                    #cv2.imwrite('ar.jpg', image)
                     for d in detections:
                         print(d)
                         
                     if id2 == -1 and len(detections) > 0:
                         self.corners = self._convertToCorners(detections, 1)
-                        self.index1 = 0 #Takes the highest confidence ar tag
+                        self.index1 = 0 # Takes the highest confidence ar tag
                         if self.write:
                             self.videoWriter.write(image)   #purely for debug   
                             cv2.waitKey(1)                        
                     elif len(detections) > 1:
                         self.corners = self._convertToCorners(detections, 2)
-                        self.index1 = 0 #takes the two highest confidence ar tags
+                        self.index1 = 0  # Takes the two highest confidence ar tags
                         self.index2 = 1
                         if self.write:
-                            self.videoWriter.write(image)   #purely for debug   
+                            self.videoWriter.write(image)  
                             cv2.waitKey(1)
                     print(self.corners)    
                 
-                #Not even YOLO saw anything
+                # YOLO saw nothing, so return false
                 if self.index1 == -1 or (self.index2 == -1 and id2 != -1): 
                     if self.write:
                         self.videoWriter.write(image) 
