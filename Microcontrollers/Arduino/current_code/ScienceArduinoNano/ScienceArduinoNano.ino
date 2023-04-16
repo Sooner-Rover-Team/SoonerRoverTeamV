@@ -64,10 +64,10 @@ byte Ethernet::buffer[500];
 // they are converted to output ranges in updateServos()
 uint8_t myHash = 0;
 uint8_t serialHash = 0;
-int linearActuatorSpeed;
-int carouselSpeed;
-int fanSpeed;
-int microscopePosition;
+int linearActuatorSpeed = 127;
+int carouselSpeed = 1;
+int fanSpeed = 90;
+int microscopePosition = 1;
 
 bool carouselMoving = false;
 bool linearActuatorMoving = false;
@@ -135,6 +135,25 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
 
 void setup()
 {
+    // setup motors
+  pinMode(ACTUATOR_UP_PIN, OUTPUT);
+  pinMode(ACTUATOR_DOWN_PIN, OUTPUT);
+  pinMode(MICROSCOPE_UP_PIN, OUTPUT);
+  pinMode(MICROSCOPE_DOWN_PIN, OUTPUT);
+  digitalWrite(ACTUATOR_UP_PIN, LOW);
+  digitalWrite(ACTUATOR_DOWN_PIN, LOW);
+  digitalWrite(MICROSCOPE_UP_PIN, LOW);
+  digitalWrite(MICROSCOPE_DOWN_PIN, LOW);
+
+  carousel.attach(CAROUSEL_PIN, 900, 2100);
+  fan.attach(FAN_PIN, 900, 2100);
+  // all motors should start in neutral position (resting for motors, 90 degrees for servos)
+  carousel.write(90);
+  fan.write(90);
+
+  pinMode(CAROUSEL_LIMIT_PIN, INPUT_PULLUP); // digital signal
+  pinMode(MICROSCOPE_ENCODER_PIN, INPUT); // analog signal
+
   Serial.begin(9600);
   #if DEBUG
     Serial.begin(9600);
@@ -153,21 +172,6 @@ void setup()
 
   // register udpSerialPrint() to port
   ether.udpServerListenOnPort(&udpSerialPrint, myport);
-
-  // setup motors
-  pinMode(ACTUATOR_UP_PIN, OUTPUT);
-  pinMode(ACTUATOR_DOWN_PIN, OUTPUT);
-  pinMode(MICROSCOPE_UP_PIN, OUTPUT);
-  pinMode(MICROSCOPE_DOWN_PIN, OUTPUT);
-
-  carousel.attach(CAROUSEL_PIN, 900, 2100);
-  fan.attach(FAN_PIN, 900, 2100);
-  // all motors should start in neutral position (resting for motors, 90 degrees for servos)
-  carousel.write(90);
-  fan.write(90);
-
-  pinMode(CAROUSEL_LIMIT_PIN, INPUT_PULLUP); // digital signal
-  pinMode(MICROSCOPE_ENCODER_PIN, INPUT); // analog signal
 
 }
 
@@ -195,6 +199,8 @@ void loop()
       Serial.println("Stopped motors");
     #endif
   }
+
+  delay(5);
 }
 
 void updateMotors() {
