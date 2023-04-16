@@ -18,20 +18,21 @@
  Servo pitchYaw, wristRotate;
  //Encoder pitchYawEncoder(2, 3), clawEncoder(4, 5); //best if these are on interrupt pins
 
- #define PITCHYAW_PIN 5
+ #define PITCHYAW_PIN 3
  #define WRISTROTATE_PIN 6
- #define CLAW_CLOSE_PIN 7
- #define CLAW_OPEN_PIN 8
- #define DEBUG 1
+ #define CLAW_CLOSE_PIN 4 // not working
+ #define CLAW_OPEN_PIN 5
+ #define DEBUG 0
 
  int pitchYawSpeed = 90;
  int rotateSpeed = 90;
- int clawSpeed = 90;
+ int clawSpeed = 126;
 
 // CAN Setup
 static const byte MCP2515_CS = 10; // clock select pin
 static const byte MCP2515_INT = 2; // interupt pin
-ACAN2515 can(MCP2515_CS, SPI, MCP2515_INT);
+// ACAN2515 can(MCP2515_CS, SPI, MCP2515_INT);
+ACAN2515 can(MCP2515_CS, SPI, 255);
 static const uint32_t QUARTZ_FREQUENCY = 8UL * 1000UL * 1000UL; // 8 MHz crystral
 CANMessage frame; // the object that will store the CAN data/ID
 
@@ -53,11 +54,12 @@ void setup() {
   SPI.begin();
   ACAN2515Settings settings(QUARTZ_FREQUENCY, 100UL * 1000UL); // 100 kb/s
   settings.mRequestedMode = ACAN2515Settings::NormalMode;
-  const uint16_t errorCode = can.begin(settings, [] { can.isr(); });
+  // const uint16_t errorCode = can.begin(settings, [] { can.isr(); });
+  const uint16_t errorCode = can.begin(settings, NULL) ; // Second argument is NULL -> no interrupt service routine
   #if DEBUG // print error codes if can can't initialize
     if(errorCode == 0) {
         Serial.print("Actual bit rate: ");
-        Serial.print(settings.actualBitRate());
+        Serial.println(settings.actualBitRate());
     }
     else{
       Serial.print ("Configuration error 0x") ;
@@ -66,29 +68,28 @@ void setup() {
     Serial.println("CAN initialized");
   #endif
 
-  //attachInterrupt(digitalPinToInterrupt(CAN_INT_PIN), MCP2515_ISR, FALLING);
+   pitchYaw.attach(PITCHYAW_PIN); //PWM pulse high time min/max = 900us-2100us
+   wristRotate.attach(WRISTROTATE_PIN, 1000, 2000);
 
-   pitchYaw.attach(PITCHYAW_PIN, 900, 2100); //PWM pulse high time min/max = 900us-2100us
-   wristRotate.attach(WRISTROTATE_PIN, 900, 2100);
-   claw.attach(CLAW_PIN, 900, 2100);
-
-   pitchYaw.write(pitchYawSpeed);
-   claw.write(clawSpeed);
+   pitchYaw.writeMicroseconds(1500);
+   wristRotate.write(rotateSpeed);
+   digitalWrite(CLAW_CLOSE_PIN, LOW);
+   digitalWrite(CLAW_OPEN_PIN, LOW);
 }
 
 void updateMotors() {
     //update variabels so PID can use this data too
-  pitchYawSpeed = frame.data[1];
-  rotateSpeed = frame.data[2];
-  clawSpeed = frame.data[3];
+  pitchYawSpeed = frame.data[0];
+  rotateSpeed = frame.data[1];
+  clawSpeed = frame.data[2];
   
   //write to motors
-  pitchYaw.write(map(pitchYawSpeed, 0, 255, 0, 180));
-  wristRotate.write(map(rotateSpeed, 0, 255, 0, 180));
+  pitchYaw.writeMicroseconds(map(pitchYawSpeed, 0, 252, 1000, 2000));
+  wristRotate.writeMicroseconds(map(rotateSpeed, 0, 252, 1000, 2000));
   if(clawSpeed > 130) {
     digitalWrite(CLAW_CLOSE_PIN, HIGH);
   }
-  if(clawSpeed < 120) {
+  else if(clawSpeed < 120) {
     digitalWrite(CLAW_OPEN_PIN, HIGH);
   }
   else {
@@ -100,28 +101,34 @@ void updateMotors() {
 
 void loop() {
   // CAN RX buff = [pitchYawSpeed, rotateSpeed, clawSpeed], frame.id=0x02
+  can.poll();
+  // delay(10);
   if (can.available()) { // if a msg is ready to be received
-    digitalWrite(13, HIGH); // status LED to know we are receiving msgs
+    //digitalWrite(13, HIGH); // status LED to know we are receiving msgs     
+    can.poll();
     can.receive(frame); // fill frame with CAN msg
     #if DEBUG // print what we get
-      Serial.print("ID = ");
-      Serial.println(frame.id);
-      Serial.print("Length = ");
-      Serial.println(frame.len);
+      if(frame.id == 0x02) {
+      //Serial.print("ID = ");
+      //Serial.println(frame.id);
+      //Serial.print("Length = ");
+      // Serial.println(frame.len);
       for(int i=0; i<frame.len; ++i) {
         Serial.print(frame.data[i]);
         Serial.print(", ");
       }
       Serial.println();
+      }
     #endif
     if(frame.id == 0x02) { // upperarm ID = 0x02
       if(frame.len == 3) { // one byte for each motor
         updateMotors();
       }
     }
-    digitalWrite(13, LOW);
+    //digitalWrite(13, LOW);
   }
-  
+  delay(10);
+
   /***** PID WILL NEED TO BE TESTED AFTER SAR *****/
 
    //monitor motor position after writing using PID.

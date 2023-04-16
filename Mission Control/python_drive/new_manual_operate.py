@@ -28,11 +28,7 @@ USING_BRIDGE = config.getboolean('Connection', 'USING_BRIDGE')
 BRIDGE_HOST = config['Connection']['BRIDGE_HOST'] # is this the base station ip ?
 EBOX_HOST = config['Connection']['EBOX_HOST']
 EBOX_PORT = int(config['Connection']['EBOX_PORT'])
-ARM_HOST = config['Connection']['ARM_HOST']
-ARM_PORT = int(config['Connection']['ARM_PORT'])
-SCI_HOST = config['Connection']['SCI_HOST']
-SCI_PORT = int(config['Connection']['SCI_PORT'])
-CONT_CONFIG = int(config['Controller']['CONFIG'])
+CONT_CONFIG = int(config['Controller']['CONFIG']) # change this in config if using a different controller than the old xbox 360
 
 """ Define axes and button numbers for different controllers """
 
@@ -95,16 +91,10 @@ sportMode = False
 
 """ Socket stuff """
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # a remote socket where the IP/port are the ones on the microcontroller
-arm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-science_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 if USING_BRIDGE:
     ebox_socket.connect((BRIDGE_HOST,EBOX_PORT)) # What is the bridge? The base station/rover antenna connection?
-    arm_socket.connect((BRIDGE_HOST,ARM_PORT))
-    science_socket.connect((BRIDGE_HOST,SCI_PORT))
 else:
     ebox_socket.connect((EBOX_HOST,EBOX_PORT)) # if not using base station, make the microcontroller the host? why not laptop?
-    arm_socket.connect((ARM_HOST,ARM_PORT))
-    science_socket.connect((SCI_HOST,SCI_PORT))
 
 """ ARM SHIT GOES HERE """
 claw_closed = False
@@ -141,6 +131,7 @@ carousel_turn = 1
 microscope_position = 1
 claw_position = 90
 
+# old variables are used to more efficiently send UDP by not sending identical messages over and over again which is pointless.
 old_act_speed = 0
 old_carousel_turn = 0
 old_claw_position = 0
@@ -149,46 +140,14 @@ old_microscope_position = 0
 lastScienceMsg = [old_act_speed, old_carousel_turn, old_claw_position, old_microscope_position]
 """ pretty simple actually """
 
-""" round, basically """
-def fix(number):
-    return floor(number) if number % 1 <= .5 else ceil(number)
+def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
+    w,h = screen.get_size()
+    c_x = w/2
+    c_y = h/2
 
 """ turn an axis into a wheel speed """
 def axistospeed(axispos):
     return fix((-axispos * 126) + 126)
-
-""" make a wheel message """
-def wheel_message(leftwheels, rightwheels):
-    msg =  bytearray([0x23, 0x00, # 0b00100011, 0b00000000
-                    leftwheels[0], leftwheels[1], leftwheels[2], 
-                    rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
-    msg[8] = sum(msg[2:8]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
-    return msg
-""" make an arm message """
-def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir):
-    msg = bytearray(8)
-    msg[0] = 0xff
-    msg[1] = shoulder_length
-    msg[2] = elbow_length
-    msg[3] = base_rotation
-    msg[4] = wrist_angle
-    msg[5] = wrist_rotation
-    msg[6] = claw_dir
-    msg[7] = sum(msg[2:8]) & 0xff
-    return msg
-
-""" make a science message """
-# SCIENCE msg: [startByte, deviceID, linearActuator, carousel, claw, microscope, checkSum]
-def sci_message(act_speed, carousel_turn, claw_position, microscope_position):
-    msg = bytearray(7)
-    msg[0] = 0xff
-    msg[1] = 2
-    msg[2] = act_speed
-    msg[3] = carousel_turn
-    msg[4] = claw_position
-    msg[5] = microscope_position
-    msg[6] = sum(msg[2:8]) & 0xff
-    return msg
 
 """ wheel toggle message """
 def toggle_wheels():
@@ -206,21 +165,53 @@ def isstopped(leftwheels,rightwheels):
             return 0
     return 1
 
+""" make a wheel message """
+def wheel_message(leftwheels, rightwheels):
+    msg =  bytearray([0x01, 0x01, # ID for WHEEL system and secondary ID for actual wheels
+                    leftwheels[0], leftwheels[1], leftwheels[2], 
+                    rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
+    msg[8] = sum(msg[2:8]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
+    return msg
+
+""" make an arm message """
+def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir):
+    msg = bytearray(8)
+    msg[0] = 0x02 # ID for ARM
+    msg[1] = shoulder_length
+    msg[2] = elbow_length
+    msg[3] = base_rotation
+    msg[4] = wrist_angle
+    msg[5] = wrist_rotation
+    msg[6] = claw_dir
+    msg[7] = sum(msg[2:8]) & 0xff
+    return msg
+
+""" make a science message """
+# SCIENCE msg: [startByte, deviceID, linearActuator, carousel, claw, microscope, checkSum]
+def sci_message(act_speed, carousel_turn, claw_position, microscope_position):
+    msg = bytearray(6)
+    msg[0] = 0x03 # ID for SCIENCE
+    msg[1] = act_speed
+    msg[2] = carousel_turn
+    msg[3] = claw_position
+    msg[4] = microscope_position
+    msg[5] = sum(msg[2:8]) & 0xff
+    return msg
+
 """ send a message to the LED strip"""
 def lights(r,g,b):
     msg = bytearray(5)
-    msg[0] = 0x23
-    msg[1] = 0x02
+    msg[0] = 0x01 # ID for WHEEL SYSTEM
+    msg[1] = 0x02 # secondary ID for LEDS
     msg[2] = r & 0xff
     msg[3] = g & 0xff
     msg[4] = b & 0xff
-    print(msg)
+    # print(msg)
     return msg
 
-def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
-    w,h = screen.get_size()
-    c_x = w/2
-    c_y = h/2
+""" round, basically """
+def fix(number):
+    return floor(number) if number % 1 <= .5 else ceil(number)
 
 # determines if the current msg is different from the last. If equal, no need to send another message and busy up arduinos
 def messageIsDifferent(new_values, old_values):
@@ -229,19 +220,6 @@ def messageIsDifferent(new_values, old_values):
         return True
     else:
         return False
-
-
-# def messageIsDifferent(act_speed, carousel_turn, claw_position, microscope_position):
-#     global old_act_speed
-#     global old_carousel_turn
-#     global old_claw_position
-#     global old_microscope_position
-#     if ((old_act_speed != act_speed) or (old_carousel_turn != carousel_turn) or (old_claw_position != claw_position) or (old_microscope_position != microscope_position)):
-#         old_act_speed = act_speed
-#         old_carousel_turn = carousel_turn
-#         old_claw_position = claw_position
-#         old_microscope_position = microscope_position
-#         return True
     
 # this function will remap a value from one range to another. ex: map(5, 0, 10, 0, 100) will return 50
 def val_map(value, fromLow, fromHigh, toLow, toHigh):
@@ -470,8 +448,8 @@ if __name__ == "__main__":
             if messageIsDifferent([shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir], lastArmMsg) or numSameMessages > 5:
                 numSameMessages = 0
                 #print(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
-                out = arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
-                arm_socket.sendall(out)
+                data = arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_rotation, claw_dir)
+                ebox_socket.sendall(data)
             else:
                 numSameMessages += 1
 
@@ -520,8 +498,8 @@ if __name__ == "__main__":
                 numSameMessages = 0
                 #print("a new button is pressed, so a new packet is sent")
                 #print(act_speed, carousel_turn, claw_position, microscope_position)
-                msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
-                science_socket.sendall(msg)
+                data = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
+                ebox_socket.sendall(data)
             else:
                 numSameMessages+=1
             # THIS SENDS MSGS REALLY FAST AND SLOWS DOWN THE ARDUINO NANO CAUSING DELAY, LEAVE UNTIL SWITCH TO TEENSY

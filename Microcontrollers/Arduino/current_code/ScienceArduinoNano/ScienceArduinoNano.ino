@@ -105,6 +105,7 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
         #endif
         return;
       }
+      // placement of these motor speeds in data[] is arbitrary but must match on manual_control.py code
       linearActuatorSpeed = uint8_t(data[2]);
       carouselSpeed = uint8_t(data[3]);
       fanSpeed = uint8_t(data[4]);
@@ -112,8 +113,9 @@ void udpSerialPrint(uint16_t dest_port, uint8_t src_ip[IP_LEN], uint16_t src_por
 
       serialHash = uint8_t(data[6]);
       myHash = (linearActuatorSpeed + carouselSpeed + fanSpeed + microscopePosition) & 0xff;
+      // if hash is correct, we assume no errors in the msg so write motors
       if (myHash == serialHash) {
-        updateServos();
+        updateMotors();
         stopTimeout = millis();
       }
       #if DEBUG
@@ -195,7 +197,10 @@ void loop()
   }
 }
 
-void updateServos() {
+void updateMotors() {
+  // The Ethernet message sends an interrupt to the processor, interrupting whatever it's doing so that the message 
+  //     can be received. If the processor is interrupted while sending motor signals, the signal will be altered,
+  //     causing the motor to twitch sporatically. To fix this, we disable interrupts in critial areas.
   // update linear actuator
   if(linearActuatorSpeed > 127) {
     digitalWrite(ACTUATOR_UP_PIN, HIGH);
@@ -233,4 +238,6 @@ void updateServos() {
     digitalWrite(MICROSCOPE_UP_PIN, LOW);
     digitalWrite(MICROSCOPE_DOWN_PIN, LOW);
   }
+
+  interrupts(); // now that motor signals are generated, interrupts are enabled to continue listening for msgs
 }

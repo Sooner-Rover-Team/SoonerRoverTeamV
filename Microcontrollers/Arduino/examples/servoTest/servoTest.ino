@@ -1,24 +1,17 @@
-#include <RobotLib.h>
-#include <Servo.h>
+daniel.j.fitzpatrick-1@ou.edu
 
-// Declare objects for the servos
-Servo servo1;
-//Servo servo2;
-
-// create names for the controller pins
-//int control1 = A0;
-
-// variables for the servo angle
-int angle1;
-int oldAngle = 90;
-bool stopped = false;
+servo(90)
+servo(110) // retract
+servo(70)
 
 
 // setup the servos by attaching the objects to the arduino pins
 void setup() {
   Serial.begin(9600);
-  servo1.attach(6, 900, 2100); // min/max in microseconds, 900-2100
+  servo1.attach(6, 1000, 2000); // min/max in microseconds, 900-2100
   servo1.write(90);
+  // servo2.attach(5, 1000, 2000); // min/max in microseconds, 900-2100
+  // servo2.write(119);
   //pinMode(2, OUTPUT);
   //pinMode(3, OUTPUT);
 
@@ -34,6 +27,13 @@ void loop()
  String userInput1 = Serial.readString(); // read the text (given by the user) as a String object.
  int angle1 = userInput1.toInt(); // convert the String into an int (integer) variable.
  Serial.println(angle1); // print the number to the Serial Monitor. (used for debugging)
+
+//  Serial.println("Input 0-180 to control the angle of the servo2");
+//  // get the value the user inputs
+//  while (Serial.available() == 0) {}// this waits for someone to press enter with text in the Serial input.
+//  String userInput2 = Serial.readString(); // read the text (given by the user) as a String object.
+//  int angle2 = userInput2.toInt(); // convert the String into an int (integer) variable.
+//  Serial.println(angle2); // print the number to the Serial Monitor. (used for debugging)
 
 //  if(angle1 == 0) { // out
 //    digitalWrite(2, HIGH);
@@ -57,10 +57,11 @@ void loop()
   //   servo1.write(i);
   //   delay(500);
   // }
-  if(angle1 != oldAngle) {
-    servo1.write(angle1);
-    oldAngle = angle1;
-  }
+  // if(angle1 != oldAngle) {
+  //   servo1.write(angle1);
+  //   oldAngle = angle1;
+  // }
+  servo1.write(angle1);
   //servo2.write(angle2);
-  delay(1000);
+  delay(500);
 }

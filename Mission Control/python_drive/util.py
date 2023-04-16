@@ -1,10 +1,44 @@
-from math import hypot, sqrt, cos, sin, atan, acos, pi
+from math import hypot, sqrt, cos, sin, atan, atan2, acos, pi, dist
 import pygame
+from pygame import gfxdraw
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+
+bicepLength = 30 # in inches
+forearmLength = 30 
+
+scale = 13
+origin_x = 150
+origin_y = 375
+# bicep_len = 18.01*scale
+# forearm_len = (30.75-18.01)*scale
+line_width = 4
+
+
+bicep_len = 15*scale
+forearm_len = 15.5*scale
+oldX = 18.5
+oldY = 9.5
+
+oldIK = False
+
+armBoundaries = pygame.image.load("backgroundPics\\armBoundaries.png")
+
+
+# this function will remap a value from one range to another. ex: map(5, 0, 10, 0, 100) will return 50
+def val_map(value, fromLow, fromHigh, toLow, toHigh):
+    # Figure out how 'wide' each range is
+    leftSpan = fromHigh - fromLow
+    rightSpan = toHigh - toLow
+
+    # Convert the left range into a 0-1 range (float)
+    valueScaled = float(value - fromLow) / float(leftSpan)
+
+    # Convert the 0-1 range into a value in the right range.
+    return toLow + (valueScaled * rightSpan)
 
 """ helper function for calculate_third_corner """
 def check_triangle(a, b, c):
@@ -52,23 +86,14 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
     # default configuration
     # make sure it stays in cylindrical bounds:
     # x^2 + y^2 <= 945.7103
-    """
-    These numbers are some kind of conversion between arm measurements and graph that plots the arm graphics
-    30.75
-    18.02
-    17.8513 / 17.9505
-    2.3858 / 1.4631
-    160.6811
-    77.8213
-    99.3601
-    168.5116
-    85.8577
-    2.91186
-    549.3601
-    540.3
-    """
 
-    if not alt_arm_config:
+    global oldX
+    global oldY
+
+    y = -temp_v*scale
+    x = temp_u*scale
+
+    if alt_arm_config == 0:
 
         # these basically keep the end point within the movement boundaries
         if(hypot(temp_u, temp_v) > 30.75):
@@ -89,15 +114,9 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
             temp_u += (temp_u-1.4631) * \
                 ((18.01/hypot((temp_u-1.4631), (temp_v-17.9505)))-1)
             temp_v += (temp_v-17.9505) * \
-                ((18.01/hypot((temp_u-1.4631), (temp_v-17.9505)))-1)
-
-        # calculate the actuator lengths
-        hypot2 = pow(temp_u, 2) + pow(temp_v, 2)
-        x_len = sqrt(160.6811-77.8123*cos(acos((99.3601-hypot2) /
-                     (-30.0*sqrt(hypot2))) + atan(temp_v/temp_u)+.40602))
-        y_len = sqrt(
-            168.5116-(85.8577*cos(2.91186-acos((hypot2-549.3601)/(-540.3)))))
-    else:
+                ((18.01/hypot((temp_u-1.4631), (temp_v-17.9505)))-1)    
+            
+    elif alt_arm_config==1:
         # configuration for the equipment servicing task
         # make sure it stays in cylindrical bounds:
         # x^2 + y^2 <= 956.4557
@@ -126,25 +145,53 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
                 temp_v = 27.5
             if(temp_u < 14.25):
                 temp_u = 14.25
+    
+    if(oldIK):
 
-        # do inverse kinematics to find the length of each actuator based on the coordinate (u,v)
+        # alt_arm_config == 2 removes GUI boundaries
+        # calculate the actuator lengths - good luck making sense of this
         hypot2 = pow(temp_u, 2) + pow(temp_v, 2)
         x_len = sqrt(160.6811-77.8123*cos(acos((99.3601-hypot2) /
-                     (-30.0*sqrt(hypot2)))+atan(temp_v/temp_u)+.40602))
+                        (-30.0*sqrt(hypot2))) + atan(temp_v/temp_u)+.40602))
         y_len = sqrt(
-            180.5948-(100.9791*cos(2.96241-acos((hypot2-549.3601)/(-540.3)))))
+            168.5116-(85.8577*cos(2.91186-acos((hypot2-549.3601)/(-540.3)))))
+        
+        shoulder_length = int(round((x_len-9.69)*(95/3.93))+40) & 0xff
+        elbow_length = int(round((y_len-9.69)*(95/3.93))+40) & 0xff
+        return shoulder_length, elbow_length, temp_u, temp_v # old implementation
+    
+    else:
+    # CALCULATE ANGLES BASED ON END EFFECTOR
+        # This math is the geometric implementation of a 2-joint arm based on resources found online
+        hypotenuse = sqrt(pow(y, 2) + pow(x, 2))
+        forearmAngle = acos((hypotenuse**2 - bicep_len**2 - forearm_len**2 )/(2*bicep_len*forearm_len))
+        bicepAngle = -(atan2(y,x) - atan2((forearm_len*sin(forearmAngle)),(bicep_len+(forearm_len*cos(forearmAngle))))) * (180/pi)
+        forearmAngle = 180-(forearmAngle * (180/pi))
 
-    return x_len, y_len, temp_u, temp_v
+        # prevents the arm from going in a bad spot and damage itself
+        if(forearmAngle > 130 or forearmAngle < 30 or bicepAngle < 13 or bicepAngle > 83): 
+            temp_u = oldX 
+            temp_v = oldY
+        else: 
+            oldX = temp_u
+            oldY = temp_v
+
+        # CONVERT ANGLES TO SERVO OUTPUTS BY REMAPING VALUES
+        b = int(val_map(bicepAngle, 13, 83, 0, 180)) # bicep can move between 13 and 83 degrees from x-axis (ground)
+        f = int(val_map(forearmAngle, 30, 130, 180, 0)) # forearm inner angle can move between 30 and 130 degrees from bicep
+        if(b < 0): b = 0
+        if(b > 180): b = 180
+        if(f < 0): f = 0
+        if(f > 180): f = 180
+        #print(shoulder_length, elbow_length, b, f, bicepAngle, forearmAngle, temp_u, temp_v)
+
+        return b, f, temp_u, temp_v # new implementation
 
 
 """ draw all the arm garbage on screen """
 def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
-    scale = 13
-    origin_x = 150
-    origin_y = 375
-    bicep_len = 18.01*scale
-    forearm_len = (30.75-18.01)*scale
-    line_width = 4
+    len = 30.5
+    #print(origin_x+claw_x*scale, origin_y+claw_y*scale)
 
     # origin
     pygame.draw.line(screen, BLACK, (origin_x-10, origin_y),
@@ -152,7 +199,7 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
     pygame.draw.line(screen, BLACK, (origin_x, origin_y-10),
                      (origin_x, origin_y+10))
 
-    if not alt_arm_config:
+    if alt_arm_config == 0:
         """ bounds for default configuration """
         # painter.drawArc(origin_x-30.75*scale, origin_y-30.75*scale, 30.75*scale*2, 30.75*scale*2, -25*16, 80*16);
         r = pygame.rect.Rect(origin_x-30.75*scale, origin_y -
@@ -170,7 +217,8 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
         r = pygame.rect.Rect((origin_x+1.4631*scale)-18.01*scale,
                              (origin_y-17.9505*scale)-18.01*scale, 18.01*scale*2, 18.01*scale*2)
         pygame.draw.arc(screen, BLACK, r, -36*pi/180, 24*pi/180, line_width)
-    else:
+
+    elif alt_arm_config == 1:
         """ bounds for equipment servicing configuration """
         # painter.drawArc(origin_x-30.93*scale, origin_y-30.93*scale, 30.93*scale*2, 30.93*scale*2, -20*pi/180, 90*pi/180);
         r = pygame.rect.Rect(origin_x-30.93*scale, origin_y -
@@ -188,24 +236,46 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
         r = pygame.rect.Rect((origin_x+1.2187*scale)-18.01*scale,
                              (origin_y-14.9504*scale)-18.01*scale, 18.01*scale*2, 18.01*scale*2)
         pygame.draw.arc(screen, BLACK, r, -20*pi/180, 45*pi/180, line_width)
-
     # pygame.draw.circle(screen, BLACK, (origin_x, origin_y), bicep_len, 1)
     # pygame.draw.circle(screen, BLACK, (origin_x+claw_x*scale, origin_y +
     #                  claw_y*scale), forearm_len, 1)
+    else:
+        """ bounds for default configuration """
+        screen.blit(armBoundaries, (0,0))
+        #pygame.gfxdraw.pixel(screen, int(origin_x+claw_x*scale), int(origin_y+claw_y*scale), BLACK)
+        #pygame.draw.line(screen, BLACK, (0, 527), (700, 527), width=2)
+        # # painter.drawArc(origin_x-30.75*scale, origin_y-30.75*scale, 30.75*scale*2, 30.75*scale*2, -25*16, 80*16);
+        # r = pygame.rect.Rect(origin_x-len*scale, origin_y -
+        #                      len*scale, len*scale*2, len*scale*2)
+        # pygame.draw.arc(screen, BLACK, r, -24*pi/180, 55*pi/180, line_width) # big arc
+
+        # # painter.drawArc(origin_x-18.02*scale, origin_y-18.02*scale, 18.02*scale*2, 18.02*scale*2, -60*16, 90*16);
+        # r = pygame.rect.Rect(origin_x-bicep_len, origin_y -
+        #                      bicep_len, bicep_len*2, bicep_len*2)
+        # pygame.draw.arc(screen, BLACK, r, -52*pi/180, 25*pi/180, line_width) # bottom arc
+
+        # # painter.drawArc((origin.x()+17.8513*scale)-18.01*scale, (origin.y()-2.3858*scale)-18.01*scale, 18.01*scale*2, 18.01*scale*2, -120*16, 70*16);
+        # r = pygame.rect.Rect((origin_x+17.8513*scale)-bicep_len,
+        #                      (origin_y-2.3858*scale)-bicep_len, bicep_len*2, 18.01*scale*2)
+        # pygame.draw.arc(screen, BLACK, r, -113*pi/180, -55*pi/180, line_width) # floor arc
+
+        # #painter.drawArc((origin_x+1.4631*scale)-18.01*scale, (origin_y-17.9505*scale)-18.01*scale, 18.01*scale*2, 18.01*scale*2, -40*16, 65*16);
+        # r = pygame.rect.Rect(origin_x+bicep_len,
+        #                      (origin_y-bicep_len), bicep_len*2, bicep_len*2) #left,top,height,width
+        # pygame.draw.arc(screen, BLACK, r, -20*pi/180, 65*pi/180, line_width) # top arc
 
     # claw position
     pygame.draw.line(screen, BLACK, (origin_x+claw_x*scale-5, origin_y +
                      claw_y*scale-5), (origin_x+claw_x*scale+5, origin_y+claw_y*scale+5), width=3)
     pygame.draw.line(screen, BLACK, (origin_x+claw_x*scale-5, origin_y +
                      claw_y*scale+5), (origin_x+claw_x*scale+5, origin_y+claw_y*scale-5), width=3)
-
+    
     # calculate coordinates for elbow joint so I know where to connect the two arm segments on GUI
     elbowJointPosition = calculate_third_corner(origin_x, origin_y, origin_x+claw_x*scale, origin_y+claw_y*scale, forearm_len, bicep_len)
 
     #draw line from origin to elbow, then from elbow to claw position. This should animate the actual position of the arm
     pygame.draw.line(screen, BLACK, (origin_x, origin_y), elbowJointPosition, width=7)
     pygame.draw.line(screen, BLACK, elbowJointPosition, (origin_x+claw_x*scale, origin_y+claw_y*scale), width=7)
-    
 
 """
 Currently displays each individual wheel and relative speed using controller inputs. Not implementing gimbal UI because 

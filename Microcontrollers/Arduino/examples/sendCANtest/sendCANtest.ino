@@ -87,7 +87,7 @@ void loop() {
       SERIAL_PORT_MONITOR.print(", ");
     }
     SERIAL_PORT_MONITOR.println();
-
+    delay(100);
 }
 
 // END FILE
