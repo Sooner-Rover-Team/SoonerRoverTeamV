@@ -226,6 +226,8 @@ class ARTracker:
                         if self.write:
                             self.__drawBorderAndLabel(bw, [id1])
                             self.videoWriter.write(bw)
+                            cv2.imshow('window', bw)
+                            cv2.waitKey(1)
                         break                    
                     else:
                         print("Found a marker but was not the correct one") 
@@ -246,6 +248,8 @@ class ARTracker:
                         if self.write:
                             self.__drawBorderAndLabel(bw, [id1, id2])
                             self.videoWriter.write(bw)
+                            cv2.imshow('window', bw)
+                            cv2.waitKey(1)
                         break                        
                      
             if i == 220:  # Did not find any AR markers with any b&w cutoff using aruco                
@@ -280,7 +284,7 @@ class ARTracker:
                 if self.index1 == -1 or (self.index2 == -1 and id2 != -1): 
                     if self.write:
                         self.videoWriter.write(image) 
-                        #cv2.imshow('window', image)
+                        cv2.imshow('window', image)
                         cv2.waitKey(1)
                     self.distanceToMarker = -1 
                     self.angleToMarker = -999 
