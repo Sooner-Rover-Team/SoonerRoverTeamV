@@ -19,10 +19,10 @@
 #include <Encoder.h>
 
 #define PITCHYAW_PIN 3
-#define WRISTROTATE_PIN 6
-#define CLAW_CLOSE_PIN 4 // not working
-#define CLAW_OPEN_PIN A5
-#define DEBUG 1
+#define WRISTROTATE_PIN 4
+#define CLAW_CLOSE_PIN 5 // not working
+#define CLAW_OPEN_PIN 6
+#define DEBUG 0
 
 //-----------------------------------------------------------------
 
@@ -77,7 +77,7 @@ void setup () {
   }
   
   // set up servo objects for PWM generation and digital signals (0 or 1)
-  pitchYaw.attach(PITCHYAW_PIN); //PWM pulse high time min/max = 900us-2100us
+  pitchYaw.attach(PITCHYAW_PIN, 1000, 2000); //PWM pulse high time min/max = 900us-2100us
   wristRotate.attach(WRISTROTATE_PIN, 1000, 2000);
   pinMode(CLAW_CLOSE_PIN, OUTPUT);
   pinMode(CLAW_OPEN_PIN, OUTPUT);
@@ -88,15 +88,15 @@ void setup () {
   digitalWrite(CLAW_OPEN_PIN, LOW);
 }
 
-void updateMotors() {
+void updateMotors(CANMessage message) {
     //update variabels so PID can use this data too
   pitchYawSpeed = message.data[0];
   rotateSpeed = message.data[1];
   clawSpeed = message.data[2];
   
   //write to motors
-  pitchYaw.writeMicroseconds(map(pitchYawSpeed, 0, 255, 1000, 2000));
-  wristRotate.writeMicroseconds(map(rotateSpeed, 0, 255, 1000, 2000));
+  pitchYaw.write(map(pitchYawSpeed, 0, 255, 0, 180));
+  wristRotate.write(map(rotateSpeed, 0, 255, 0, 180));
   if(clawSpeed > 130) {
     digitalWrite(CLAW_CLOSE_PIN, HIGH);
   }
@@ -126,11 +126,10 @@ void loop () {
 
     if(message.id == 0x02) { // upperarm ID = 0x02
       if(message.len == 3) { // one byte for each motor
-        updateMotors();
+        updateMotors(message);
       }
     }
   }
-
   /***** PID WILL NEED TO BE TESTED AFTER SAR *****/
 
    //monitor motor position after writing using PID.

@@ -16,10 +16,10 @@
 //   the Teensy does not have to spend time printing to Serial and also saves memory space
 #define DEBUG 0 
 
-#define BICEP_PIN 5
-#define FOREARM_PIN 6
-#define BASE_PIN 9
-#define CAN_LED_PIN A7
+#define BICEP_PIN 3
+#define FOREARM_PIN 5
+#define BASE_PIN 4
+#define CAN_LED_PIN 2
 #define STOP 1500
 //-----------------------------------------------------------------
 
@@ -68,25 +68,29 @@ void setup () {
 
   // Initialize Servo objects to generate PWM signals
   pinMode(CAN_LED_PIN, OUTPUT); // CAN status LED
-  base.attach(BASE_PIN); // PWM min/max pulse duration = 900us - 2100us
-  bicep.attach(BICEP_PIN, 900, 2100);
-  forearm.attach(FOREARM_PIN, 900, 2100);
+  base.attach(BASE_PIN, 1000, 2000); // PWM min/max pulse duration = 900us - 2100us
+  bicep.attach(BICEP_PIN, 1000, 2000);
+  forearm.attach(FOREARM_PIN, 1000, 2000);
 
   // initial speed/position of motors
-  base.writeMicroseconds(STOP);
+  base.write(90);
   bicep.write(135); // inverse kinematics starts arm in this position right now
   forearm.write(119);
 }
 
-void updateMotors() {
+void updateMotors(CANMessage message) {
   // frame.data should contain values to write to each motor
   #if DEBUG
     Serial.println("Writing to motors");
   #endif
-  bicep.write(message.data[0]);
-  forearm.write(message.data[1]);
+  bicepPosition = message.data[0];
+  forearmPosition = message.data[1];
+  baseSpeed = message.data[2];
+
+  bicep.write(bicepPosition);
+  forearm.write(forearmPosition);
   // map(value, fromMin, fromMax, toMin, toMax) - maps a value from one range to another
-  base.writeMicroseconds((int)map(message.data[2], 0, 252, 1000, 2000)); 
+  base.write((int)map(baseSpeed, 0, 252, 0, 180)); 
 }
 
 void loop () {
@@ -103,13 +107,13 @@ void loop () {
       Serial.println();
     #endif
     if((message.id == 0x01) && (message.len == 3)) {
-      updateMotors();
+      updateMotors(message);
       timeOut = millis();
     }
     digitalWrite(CAN_LED_PIN, LOW);
 
     if ((millis() - timeOut) >= 1000) { // if the last good msg recieved was longer than 1 sec ago, stop wheels
-      base.writeMicroseconds(STOP);
+      base.write(90);
     }
   }
 }

@@ -28,7 +28,8 @@
 
 #include <NativeEthernet.h> // NativeEthernet.h and NativeEthernetUDP.h are the exact same as the arduino Ethernet.h and EtherbetUDP.h.
 #include <NativeEthernetUdp.h>
-#include <ACAN_t4.h>
+#include <ACAN_T4.h>
+#include <Servo.h>
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -37,7 +38,7 @@ IPAddress ip(10, 0, 0, 101);
 unsigned int localPort = 1001;      // local port to listen on
 
 // buffers for receiving and sending data
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  // buffer to hold incoming packet,
+unsigned char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  // buffer to hold incoming packet,
 char ReplyBuffer[] = "acknowledged";        // a string to send back
 
 // An EthernetUDP instance to let us send and receive packets over UDP
@@ -47,16 +48,19 @@ EthernetUDP Udp;
 CANMessage message;
 
 #define DEBUG 1 // set to 0 to avoid compiling print statements (will save space, don't need to print if running on rover)
-int checkSum = 0; // used to check for errors in recieved message.
-#define greenPin 8 // LED pins on Teensy
-#define redPin 9
-#define bluePin 10
+
+#define greenPin 15 // LED pins on Teensy
+#define redPin 14
+#define bluePin 13
 #define WHEEL 0x01 // UDP IDs
 #define ARM 0x02
 #define SCIENCE 0x03
 #define LED 0x02
 #define LOWER_ARM 0x01 // CAN IDs
 #define UPPER_ARM 0x02
+#define CAN_LED 2
+
+int checkSum = 0; // used to check for errors in recieved message.
 
 int vertPos = 90; // position of gimbal
 int horizPos = 90; 
@@ -77,7 +81,7 @@ double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
 unsigned long lastLoop = 0; // milli time of last loop
 double deltaLoop = 0.0; // seconds since last loop
 
-double Kp = 1.0; // proportional change between target and current
+double Kp = 3.5; // proportional change between target and current
 
 double error[6];
 
@@ -85,6 +89,105 @@ double error[6];
 const int PWM_LOW = 1000;
 const int PWM_HIGH = 2000;
 const int PWM_NEUTRAL = 1500; 
+
+void setup() {
+  // Open serial communications and wait for port to open:
+  pinMode(LED_BUILTIN, OUTPUT);
+  #if DEBUG
+    Serial.begin(115200);
+    delay(100);
+    Serial.println("Starting");
+  #endif
+  // while (!Serial) {
+  //   delay (50);
+  //   digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)); // wait for serial port to connect. Needed for native USB port only
+  // }
+  // You can use Ethernet.init(pin) to configure the CS pin
+  //Ethernet.init(10);  // Most Arduino shields <---
+  //Ethernet.init(5);   // MKR ETH Shield
+  //Ethernet.init(0);   // Teensy 2.0
+  //Ethernet.init(20);  // Teensy++ 2.0
+  //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
+  //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
+  wheel0.attach(6, 1000, 2000);
+  wheel1.attach(7, 1000, 2000);
+  wheel2.attach(8, 1000, 2000);
+  wheel3.attach(3, 1000, 2000);
+  wheel4.attach(4, 1000, 2000);
+  wheel5.attach(5, 1000, 2000);
+
+  wheel0.write(90);
+  delay(5);
+  wheel1.write(90);
+  delay(5);
+  wheel2.write(90);
+  delay(5);
+  wheel3.write(90);
+  delay(5);
+  wheel4.write(90);
+  delay(5);
+  wheel5.write(90);
+
+  // gimbalVert.attach(10);
+  // gimbalHoriz.attach(11));
+
+  pinMode(redPin, OUTPUT); // red
+  pinMode(greenPin, OUTPUT); // green
+  pinMode(bluePin, OUTPUT); // blue
+  pinMode(CAN_LED, OUTPUT);
+  // start the Ethernet
+  Ethernet.begin(mac, ip);
+  #if DEBUG
+    Serial.println("Starting ethernet");
+  #endif
+  // Check for Ethernet hardware present
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    #if DEBUG
+      Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+    #endif
+    while (true) {
+      delay(1); // do nothing, no point running without Ethernet hardware
+    }
+  }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    #if DEBUG
+      Serial.println("Ethernet cable is not connected.");
+    #endif
+  }
+  // initialize the CAN settings and start
+  ACAN_T4_Settings settings (100 * 1000) ; // 100 kbit/s - must agree on both ends of CAN
+  const uint32_t errorCode = ACAN_T4::can3.begin (settings) ;
+  if (0 == errorCode) {
+    #if DEBUG
+      Serial.println ("can3 ok") ;
+    #endif
+  }else{
+    #if DEBUG
+      Serial.print ("Error can3: 0x") ;
+      Serial.println (errorCode, HEX) ;
+    #endif
+    while (1) {
+      delay (100) ;
+      #if DEBUG
+        Serial.println ("Invalid setting") ;
+      #endif
+      digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
+    }
+  }
+
+  // start UDP
+  Udp.begin(localPort);
+}
+
+void printCanMsg(CANMessage &frame){
+    //Serial.print ("  id: ");Serial.println (frame.id,HEX);
+    //Serial.print ("  len: ");Serial.println (frame.len);
+    //Serial.print ("  data: ");
+    for(int x=0;x<frame.len;x++) {
+      Serial.print (frame.data[x]); Serial.print(":");
+    }
+    Serial.println ("");
+}
 
 // clips a value so it stays in range [low, high]
 double clip(double value, double low, double high) {
@@ -129,7 +232,7 @@ void updateGimbal(int vertical, int horizontal) {
 
 //LED msg: [0x01, 0x02, red, green, blue]
 //WHEEL msg: [0x01, 0x01, w1, w2, w3, w4, w5, w6, checkSum]
-void updateWheels(char msg[], int msgSize) {
+void updateWheels(unsigned char msg[], int msgSize) {
   checkSum = 0;
   #if DEBUG
     //Serial.println("msg recieved:");
@@ -186,7 +289,16 @@ void updateWheels(char msg[], int msgSize) {
         // set the appropriate target speeds
         for (int i = 0; i < 6; i++) {
           targetSpeeds[i] = (uint8_t)msg[i+2];
-        }          
+        }
+        for (int i = 0; i < 6; i++) {
+          if (wheelReverse[i]) {
+          wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
+          Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+          Serial.print(", ");       
+          } else {
+            wheels[i].write((int)map(targetSpeeds[i], 0, 252, 0, 180));
+        }
+    }          
         //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9])); // NOT IMPLEMENTED RIGHT NOW
       }
       else {
@@ -208,23 +320,30 @@ void updateWheels(char msg[], int msgSize) {
   }
 }
 
-void sendArmCAN(char msg[], int msgSize) {
+void sendArmCAN(unsigned char msg[], int msgSize) {
   if(msgSize == 8) {
+    checkSum = 0;
     for(int i=1; i<7; i++) { 
         checkSum += msg[i];
     }
     checkSum = checkSum & 0xff;
     if(checkSum == uint8_t(msg[7])) {
       message.id = LOWER_ARM; // ID for lower arm
-      message.data = {msg[1], msg[2], msg[3]}; // base, bicep, forearm
-      const bool ok = ACAN_T4::can1.tryToSend (message) ;
-      if(ok) {
-        #if DEBUG
-          Serial.print("lower sent, ");
-        #endif   
+      message.len = 3;
+      memcpy(message.data, &msg[1], 3); // base, bicep, forearm
+     // printCanMsg(message);
+      bool ok = ACAN_T4::can3.tryToSend (message) ;
+      if(ok && DEBUG) {
+        Serial.println("lower sent"); 
       }
       message.id = UPPER_ARM;
-      message.data = {msg[4], msg[5], msg[6]}; // pitch, roll, claw
+      message.len = 3;
+      memcpy(message.data, &msg[4], 3); // pitch, roll, claw
+      //printCanMsg(message);
+      ok = ACAN_T4::can3.tryToSend (message) ;
+      if(ok && DEBUG) {
+        Serial.println("upper sent"); 
+      }
     }
     else {
       #if DEBUG
@@ -239,132 +358,67 @@ void sendArmCAN(char msg[], int msgSize) {
   }
 }
 
-void sendScienceCAN(char msg[], int msgSize) {
+void sendScienceCAN(unsigned char msg[], int msgSize) {
   if(msgSize == 6) {
+    checkSum = 0;
     for(int i=1; i<5; i++) { 
         checkSum += msg[i];
     }
     checkSum = checkSum & 0xff;
     if(checkSum == uint8_t(msg[5])) {
       message.id = SCIENCE; // ID for lower arm
-      message.data = {msg[1], msg[2], msg[3], msg[4]}; // actuator, carousel, fan, microscope
-      const bool ok = ACAN_T4::can1.tryToSend (message) ;
+      message.len = 4;
+      memcpy(message.data, &msg[1], 4); // actuator, carousel, fan, microscope
+      bool ok = ACAN_T4::can1.tryToSend (message) ;
       if(ok) {
         #if DEBUG
-          Serial.print("lower sent, ");
+          Serial.print("Science sent, ");
         #endif   
       }
-      message.id = UPPER_ARM;
-      message.data = {msg[4], msg[5], msg[6]}; // pitch, roll, claw
     }
     else {
       #if DEBUG
-        Serial.println("checkSum for ARM was incorrect... ignoring this message.");
+        Serial.println("checkSum for SCIENCE was incorrect... ignoring this message.");
       #endif
     }
   }
   else {
     #if DEBUG
-        Serial.println("checkSum for ARM was incorrect... ignoring this message.");
+        Serial.println("checkSum for SCIENCE was incorrect... ignoring this message.");
       #endif
   }
-}
-
-void setup() {
-  // You can use Ethernet.init(pin) to configure the CS pin
-  //Ethernet.init(10);  // Most Arduino shields <---
-  //Ethernet.init(5);   // MKR ETH Shield
-  //Ethernet.init(0);   // Teensy 2.0
-  //Ethernet.init(20);  // Teensy++ 2.0
-  //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
-  //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
-  wheel0.attach(4);
-  wheel1.attach(5);
-  wheel2.attach(6);
-  wheel3.attach(7);
-  wheel4.attach(8);
-  wheel5.attach(9);
-
-  gimbalVert.attach(8);
-  gimbalHoriz.attach(9);
-
-  pinMode(redPin, OUTPUT); // red
-  pinMode(greenPin, OUTPUT); // green
-  pinMode(bluePin, OUTPUT); // blue
-
-  // start the Ethernet
-  Ethernet.begin(mac, ip);
-
-  // Open serial communications and wait for port to open:
-  #if DEBUG
-    Serial.begin(9600);
-    while (!Serial) {
-      ; // wait for serial port to connect. Needed for native USB port only
-    }
-  #endif
-
-  // Check for Ethernet hardware present
-  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    #if DEBUG
-    Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-    #endif
-    while (true) {
-      delay(1); // do nothing, no point running without Ethernet hardware
-    }
-  }
-  if (Ethernet.linkStatus() == LinkOFF) {
-    #if DEBUG
-    Serial.println("Ethernet cable is not connected.");
-    #endif
-  }
-  // initialize the CAN settings and start
-  ACAN_T4_Settings settings (100 * 1000) ; // 100 kbit/s - must agree on both ends of CAN
-  const uint32_t errorCode = ACAN_T4::can3.begin (settings) ;
-
-  if (0 == errorCode) {
-    #if DEBUG
-      Serial.println ("can3 ok") ;
-    #endif
-  }else{
-    #if DEBUG
-      Serial.print ("Error can3: 0x") ;
-      Serial.println (errorCode, HEX) ;
-    #endif
-    while (1) {
-      delay (100) ;
-      #if DEBUG
-        Serial.println ("Invalid setting") ;
-      #endif
-      digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
-    }
-  }
-
-  // start UDP
-  Udp.begin(localPort);
 }
 
 void loop() {
   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize) {
+    digitalWrite(CAN_LED, HIGH);
     #if DEBUG
-      Serial.print("Received packet of size ");
-      Serial.println(packetSize);
-      Serial.print("From ");
-      IPAddress remote = Udp.remoteIP();
-      for (int i=0; i < 4; i++) {
-        Serial.print(remote[i], DEC);
-        if (i < 3) {
-          Serial.print(".");
-        }
-      }
-      Serial.print(", port ");
-      Serial.println(Udp.remotePort());
+      // Serial.print("Received packet of size ");
+      // Serial.println(packetSize);
+      // Serial.print("From ");
+      // IPAddress remote = Udp.remoteIP();
+      // for (int i=0; i < 4; i++) {
+      //   Serial.print(remote[i], DEC);
+      //   if (i < 3) {
+      //     Serial.print(".");
+      //   }
+      // }
+      //Serial.print(", port ");
+      //Serial.println(Udp.remotePort());
     #endif
     // read the packet into packetBuffer
     Udp.read(packetBuffer, packetSize);
+    #if DEBUG
+      for(int i=0; i<packetSize; ++i) {
+        Serial.print(packetBuffer[i]);
+        Serial.print(", ");
+      }
+      Serial.println();
+    #endif
     if(packetBuffer[0] == WHEEL) { // means the UDP message was for the wheel system
-      updateWheels(packetBuffer, packetSize)
+      updateWheels(packetBuffer, packetSize);
     }
     else if(packetBuffer[0] == ARM) {
       sendArmCAN(packetBuffer, packetSize);
@@ -381,18 +435,26 @@ void loop() {
     //Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     //Udp.write(ReplyBuffer);
     //Udp.endPacket();
+    digitalWrite(CAN_LED, LOW);
   }
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
-    for (int i = 0; i < 6; i++) {
-      wheels[i].writeMicroseconds(PWM_NEUTRAL);
-      currentSpeeds[i] = 126;
-      targetSpeeds[i] = 126;
-    }
+    // for (int i = 0; i < 6; i++) {
+    //   wheels[i].write(90);
+    //   delay(5);
+    //   currentSpeeds[i] = 126;
+    //   targetSpeeds[i] = 126;
+    // }
+    wheel0.write(90);
+    wheel1.write(90);
+    wheel2.write(90);
+    wheel3.write(90);
+    wheel4.write(90);
+    wheel5.write(90);
     // wheel3.writeMicroseconds(1500);
-    gimbalVert.write(90);
-    gimbalHoriz.write(90);
+    // gimbalVert.write(90);
+    // gimbalHoriz.write(90);
 
     #if DEBUG
     Serial.println("Stopped motors");
@@ -412,25 +474,53 @@ void loop() {
       if (targetSpeeds[i] == 126) currentSpeeds[i] = 126;
       // also clip the current speed value just to be safe
       currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
-      if (wheelReverse[i]) {
-        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 252, 0, PWM_LOW, PWM_HIGH));        
-      } else {
-        wheels[i].writeMicroseconds((int)map(currentSpeeds[i], 0, 252, PWM_LOW, PWM_HIGH));
-      }
-
-      // just debugging stuff
-      // if (i == 3) {
-      //   // Serial.println(wheels[0].read());
-      // //   Serial.print("ts: ");
-      // //   Serial.print(targetSpeeds[i]);
-      // //   Serial.print(", cs: ");
-      //   Serial.println(currentSpeeds[i]);      
+      // if (wheelReverse[i]) {
+      //   wheels[i].write((int)map(currentSpeeds[i], 252, 0, 0, 180)); 
+      //   // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+      //   // Serial.print(", ");       
+      // } else {
+      //   wheels[i].write((int)map(currentSpeeds[i], 0, 252, 0, 180));
+      //   // Serial.print((int)map(currentSpeeds[i], 0, 252, 0, 180));
+      //   // Serial.print(", "); 
       // }
-
+      wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
+      wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
+      wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
+      wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
+      wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
+      wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
     }
+    // for (int i = 0; i < 6; i++) {
+    //   if (wheelReverse[i]) {
+    //     wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
+    //     // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+    //     // Serial.print(", ");       
+    //   } else {
+    //     wheels[i].write((int)map(targetSpeeds[i], 0, 252, 0, 180));
+    //   }
+    // }
+    //bool wheelReverse[6] = {true, false, false, true, false, true};
+
+    wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
+    wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
+    wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
+    wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
+    wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
+    wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
+        // Serial.print((int)map(currentSpeeds[i], 0, 252, 0, 180));
+        // Serial.print(", ");
+      //just debugging stuff
+      //if (i == 3) {
+        // Serial.println(wheels[0].read());
+      //   Serial.print("ts: ");
+      //   Serial.print(targetSpeeds[i]);
+      //   Serial.print(", cs: ");
+        //Serial.println(currentSpeeds[i]);      
+      //}
+
+    //Serial.println();
     // remember milli time of the last loop
     lastLoop = millis();
   }
-  delay(10);
 }
 

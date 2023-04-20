@@ -183,7 +183,7 @@ def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_
     msg[4] = wrist_angle
     msg[5] = wrist_rotation
     msg[6] = claw_dir
-    msg[7] = sum(msg[2:8]) & 0xff
+    msg[7] = sum(msg[1:7]) & 0xff
     return msg
 
 """ make a science message """
@@ -195,7 +195,7 @@ def sci_message(act_speed, carousel_turn, claw_position, microscope_position):
     msg[2] = carousel_turn
     msg[3] = claw_position
     msg[4] = microscope_position
-    msg[5] = sum(msg[2:8]) & 0xff
+    msg[5] = sum(msg[1:5]) & 0xff
     return msg
 
 """ send a message to the LED strip"""
@@ -441,7 +441,7 @@ if __name__ == "__main__":
             else:
                 base_rotation = 126
             if (abs(R_Y) > THRESHOLD_HIGH):
-                wrist_angle = 126 + int(R_Y * 22)
+                wrist_angle = 126 + int(R_Y * 15)
             else:
                 wrist_angle = 126
             
