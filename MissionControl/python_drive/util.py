@@ -1,4 +1,5 @@
 from math import hypot, sqrt, cos, sin, atan, atan2, acos, pi, dist
+from turtle import distance
 import pygame
 from pygame import gfxdraw
 WHITE = (255, 255, 255)
@@ -7,8 +8,22 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
+pygame.display.init() # Initialize display module
+pygame.display.set_mode((1200,600)) # width/ height of window in pixels
+initialize = True
+
+baseImage = pygame.image.load("backgroundPics\\RotatingBase.png")
+bicepImage = pygame.image.load("backgroundPics\\ProximalMemberandActuators.png")
+bicepImage = pygame.transform.rotate(bicepImage, -90)
+
+forearmImage = pygame.image.load("backgroundPics\\DistalMember.png")
+wristAndClawImage = pygame.image.load("backgroundPics\\WristAndClaw.png")
+armBackground = pygame.image.load("backgroundPics\\armBackground.png")
+
 bicepLength = 30 # in inches
 forearmLength = 30 
+bicepAngle = 0
+forearmAngle = 0
 
 scale = 13
 origin_x = 150
@@ -89,6 +104,8 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
 
     global oldX
     global oldY
+    global bicepAngle
+    global forearmAngle
 
     y = -temp_v*scale
     x = temp_u*scale
@@ -190,6 +207,15 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
 
 """ draw all the arm garbage on screen """
 def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
+    global initialize
+    global bicepImage
+    global bicepAngle
+    global forearmAngle
+    if(initialize):
+        bicepImage = bicepImage.convert_alpha()
+        bicepImage.set_at((200, 120), (0, 0, 0, 0))
+        initialize = False
+
     len = 30.5
     #print(origin_x+claw_x*scale, origin_y+claw_y*scale)
 
@@ -276,7 +302,55 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y):
     #draw line from origin to elbow, then from elbow to claw position. This should animate the actual position of the arm
     pygame.draw.line(screen, BLACK, (origin_x, origin_y), elbowJointPosition, width=7)
     pygame.draw.line(screen, BLACK, elbowJointPosition, (origin_x+claw_x*scale, origin_y+claw_y*scale), width=7)
+    
+    # calculate position and rotation angle of bicep image
+    x, y = midpoint(origin_x, origin_y, elbowJointPosition[0], elbowJointPosition[1])
+    moddedbicepImage, bicepRect = rot_center(bicepImage, 90+bicepAngle, x, y)
+    # same idea for forearm image but getting the angle of the image takes more geometry. forearmAngle is the angle between the bicep and forearmm
+    #    the image needs the angle that the forearm makes with the ground. make a right triangle using the ground and do theta = acos(adjacent/hypotenuse)
+    x, y = midpoint(elbowJointPosition[0], elbowJointPosition[1], origin_x+claw_x*scale, origin_y+claw_y*scale)
+    d = distance(x, y, origin_x+claw_x*scale, y)
+    phi = distance(x, y, origin_x+claw_x*scale, origin_y+claw_y*scale)
+    theta = -acos(d/phi)*(180/pi)
+    # look at the acos graph online or print theta before this if() to see why this theta correction is needed
+    if(origin_x+claw_x*scale < x): theta = 180-theta
+    if(origin_y+claw_y*scale < y): theta = -theta
 
+    moddedforearmImage, forearmRect = rot_center(forearmImage, theta, x, y) 
+
+    moddedWristAndClawImage, wristAndClawRect = rot_center(wristAndClawImage, theta, origin_x+claw_x*scale, origin_y+claw_y*scale)
+    # add arm pictures to GUI
+    screen.blits(((baseImage, (origin_x-75, origin_y-20)), (moddedbicepImage, bicepRect), (moddedforearmImage, forearmRect), (moddedWristAndClawImage, wristAndClawRect)))
+
+def rot_center(image, angle, x, y):
+    
+    rotated_image = pygame.transform.rotate(image, angle)
+    new_rect = rotated_image.get_rect(center = image.get_rect(center = (x, y)).center)
+
+    return rotated_image, new_rect
+
+def midpoint(x1,y1, x2,y2):
+    return ((x1+x2)/2, (y1+y2)/2)
+
+def distance(x1, y1, x2, y2):
+    dist = sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return dist
+
+def cosine_angle(x1, y1, x2, y2, x3, y3):
+    # Calculate the lengths of the sides of the triangle
+    a = sqrt((x2 - x3)**2 + (y2 - y3)**2)
+    b = sqrt((x1 - x3)**2 + (y1 - y3)**2)
+    c = sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    
+    # Find the angle opposite to vertex 1 (assuming it's the right angle)
+    if a > b and a > c:
+        cos_angle = b / a
+    elif b > a and b > c:
+        cos_angle = a / b
+    else:
+        cos_angle = c / a
+    
+    return cos(cos_angle)
 """
 Currently displays each individual wheel and relative speed using controller inputs. Not implementing gimbal UI because 
   camera view should be enough.

@@ -21,8 +21,8 @@
 /*
  * STILL NEED TO ADD GPS
  */
-#include <NativeEthernet.h> // NativeEthernet.h and NativeEthernetUDP.h are the exact same as the arduino Ethernet.h and EtherbetUDP.h.
-#include <NativeEthernetUdp.h>
+#include <Ethernet.h>
+#include <EthernetUdp.h>
 #include <Servo.h>
 
 // Enter a MAC address and IP address for your controller below.
@@ -42,9 +42,9 @@ EthernetUDP Udp;
 
 #define DEBUG 1 // set to 0 to avoid compiling print statements (will save space, don't need to print if running on rover)
 int checkSum = 0; // used to check for errors in recieved message.
-#define greenPin 8 // LED pins
-#define redPin 9
-#define bluePin 10
+#define greenPin 10 // LED pins
+#define redPin 11
+#define bluePin 12
 #define LED 0x02
 #define WHEEL 0x00
 
@@ -84,12 +84,12 @@ void setup() {
   //Ethernet.init(20);  // Teensy++ 2.0
   //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
   //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
-  wheel0.attach(4);
-  wheel1.attach(5);
-  wheel2.attach(6);
-  wheel3.attach(7);
-  wheel4.attach(8);
-  wheel5.attach(9);
+  wheel0.attach(2);
+  wheel1.attach(3);
+  wheel2.attach(4);
+  wheel3.attach(5);
+  wheel4.attach(6);
+  wheel5.attach(7);
 
   gimbalVert.attach(8);
   gimbalHoriz.attach(9);
@@ -260,23 +260,23 @@ void loop() {
   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize) {
-    #if DEBUG
-    Serial.print("Received packet of size ");
-    Serial.println(packetSize);
-    Serial.print("From ");
-    IPAddress remote = Udp.remoteIP();
-    for (int i=0; i < 4; i++) {
-      Serial.print(remote[i], DEC);
-      if (i < 3) {
-        Serial.print(".");
-      }
-    }
-    Serial.print(", port ");
-    Serial.println(Udp.remotePort());
-    #endif
+    // #if DEBUG
+    // Serial.print("Received packet of size ");
+    // Serial.println(packetSize);
+    // Serial.print("From ");
+    // IPAddress remote = Udp.remoteIP();
+    // for (int i=0; i < 4; i++) {
+    //   Serial.print(remote[i], DEC);
+    //   if (i < 3) {
+    //     Serial.print(".");
+    //   }
+    // }
+    // Serial.print(", port ");
+    // Serial.println(Udp.remotePort());
+    // #endif
     // read the packet into packetBuffer
-    // Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-    // update(packetBuffer, packetSize);
+    Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
+    update(packetBuffer, packetSize);
 
     // send a reply to the IP address and port that sent us the packet we received
     //Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
@@ -320,13 +320,13 @@ void loop() {
       }
 
       // just debugging stuff
-      // if (i == 3) {
-      //   // Serial.println(wheels[0].read());
-      // //   Serial.print("ts: ");
-      // //   Serial.print(targetSpeeds[i]);
-      // //   Serial.print(", cs: ");
-      //   Serial.println(currentSpeeds[i]);      
-      // }
+      if (i == 3) {
+        // Serial.println(wheels[0].read());
+      //   Serial.print("ts: ");
+      //   Serial.print(targetSpeeds[i]);
+      //   Serial.print(", cs: ");
+        Serial.println(currentSpeeds[i]);      
+      }
 
     }
     // remember milli time of the last loop
@@ -334,4 +334,3 @@ void loop() {
   }
   delay(10);
 }
-

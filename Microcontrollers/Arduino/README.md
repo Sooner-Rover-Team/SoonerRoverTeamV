@@ -1,10 +1,10 @@
 # Arduino Code :100:
 
-### current_code 
-    contains the up-to-date code running on the arduinos on REMI.
+### mostRecent
+    contains the arduino code that was last used on the rover before switching to Teensy.
 
 ### past_code 
-    contains any program someone has made in the past for arduino that are no longer in use.
+    contains any program someone has made in the past for arduino that is no longer in use.
 
 ### examples 
     contains test scripts designed to make testing motors and arduino accessories easy.
