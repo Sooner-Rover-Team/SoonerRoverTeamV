@@ -94,10 +94,10 @@ class Drive:
         if speed == 0:
             max += 40
             min -= 40
-        if max > 90:
-            max=90
-        if min < -90:
-            min = -90
+        if max > 55:
+            max = 55
+        if min < -55:
+            min = -55
             
         #Makes sure the adjusted speed values are within the max and mins
         if values[0] > max:
@@ -121,14 +121,14 @@ class Drive:
             values[1] = 10
         
         if values[0] <= 0 and values[0] > -40 and speed == 0:
-            values[0] = -40
+            values[0] = -30
         elif values[0] > 0 and values[0] < 40 and speed == 0:
-            values[0] = 40
+            values[0] = 30
         
         if values[1] <= 0 and values[1] > -40 and speed == 0:
-            values[1] = -40
+            values[1] = -30
         elif values[1] > 0 and values[1] < 40 and speed == 0:
-            values[1] = 40
+            values[1] = 30
     
         return values
         
@@ -136,7 +136,8 @@ class Drive:
     def printSpeeds(self):
         print("Left wheels: ", round(self.speeds[0],1))
         print("Right wheels: ", round(self.speeds[1],1))
-    
+        print(self.gps.latitude, self.gps.longitude)
+
     #Drives along a given list of GPS coordinates while looking for the given ar markers
     #Keep id2 at -1 if looking for one post, set id1 to -1 if you aren't looking for AR markers 
     def driveAlongCoordinates(self, locations, id1, id2=-1):

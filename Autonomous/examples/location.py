@@ -1,3 +1,9 @@
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+import sys
+sys.path.append('../libs')
+
 from time import sleep
 from libs import Location
 
