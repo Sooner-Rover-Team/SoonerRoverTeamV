@@ -6,20 +6,31 @@
      Pin wiring diagram
 
      [],pin  front   [],pin
-     0,2     0-|-0    3,11
+     0,6     0-|-0    3,3
                |
-     1,9     0-|-0   -4,12
+     1,7     0-|-0   -4,4
                |
-    -2,20    0-|-0   -5,13
+    -2,8     0-|-0   -5,5
      "-" indicaes wheel's polarity needs to be reversed
 
-     gimbal pan: D6
-     gimbal tilt: D7
+     gimbal pan: 
+     gimbal tilt: 
 
-     LED RGB: 19,20,21
+     LED pins RGB: 11,10,12
 
      Pins used by Ethernet:
 
+     Wheel UDP message:
+     [0x01, 0x01, wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, wheel6, checkSum]
+
+     LED UDP message:
+     [0x01, 0x02, redLED, greenLED, blueLED]
+
+     ARM UDP Message:
+     [0x02, bicep, forearm, base, pitch, roll, claw]
+
+     SCIENCE UDP Message:
+     [0x03, actuator, carousel, fan, microscope]
 */
 
 #ifndef __IMXRT1062__
@@ -30,12 +41,13 @@
 #include <NativeEthernetUdp.h>
 #include <ACAN_T4.h>
 #include <Servo.h>
+
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(10, 0, 0, 101);
 
-unsigned int localPort = 1001;      // local port to listen on
+unsigned int localPort = 1001; // local port to listen on
 
 // buffers for receiving and sending data
 unsigned char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  // buffer to hold incoming packet,
@@ -49,9 +61,6 @@ CANMessage message;
 
 #define DEBUG 0 // set to 0 to avoid compiling print statements (will save space, don't need to print if running on rover)
 
-#define greenPin 15 // LED pins on Teensy
-#define redPin 14
-#define bluePin 13
 #define WHEEL 0x01 // UDP IDs
 #define ARM 0x02
 #define SCIENCE 0x03
@@ -59,6 +68,10 @@ CANMessage message;
 #define LOWER_ARM 0x01 // CAN IDs
 #define UPPER_ARM 0x02
 #define CAN_LED 2
+#define UDP_LED 1
+#define greenPin 10 // LED pins on Teensy
+#define redPin 11
+#define bluePin 12
 
 int checkSum = 0; // used to check for errors in recieved message.
 
@@ -73,13 +86,11 @@ bool wheelReverse[6] = {true, false, false, true, false, true};
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
 
 // super awesome fun proportional wheel control variables
-bool proportionalControl = true;
 int targetSpeeds[6] = {126, 126, 126, 126, 126, 126}; // neutral
 double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
-
+bool proportionalControl = false;
 unsigned long lastLoop = 0; // milli time of last loop
 double deltaLoop = 0.0; // seconds since last loop
-
 double Kp = 3.5; // proportional change between target and current
 double Kp_thresh = 0.4; // % of wheel speed to apply proportional control under
 

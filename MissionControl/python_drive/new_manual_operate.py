@@ -86,7 +86,7 @@ THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 FPS = 20
 flash = False
-mode = 'drive'
+mode = 'operate' #;'drive'
 arm_installed = True # Change to False for science mission
 sportMode = False
 
@@ -250,11 +250,11 @@ if __name__ == "__main__":
                 msg = wheel_message(leftwheels, rightwheels)
                 ebox_socket.sendall(msg)
 
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN: # Escape key will end the program
                 kp = pygame.key.get_pressed()
-                if kp[pygame.K_ESCAPE]:
+                if kp[pygame.K_ESCAPE and mode == 'drive']:
                     running = False
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT and mode == 'drive':
                 running = False
             if event.type == pygame.JOYDEVICEREMOVED:
                 print('joystick disconnected')
@@ -323,7 +323,7 @@ if __name__ == "__main__":
         if pygame.joystick.get_count() == 0:
             continue
         """ also quit if start and select are pressed """
-        if joystick.get_button(SELECT) and joystick.get_button(START):
+        if joystick.get_button(SELECT) and joystick.get_button(START) and mode == 'drive':
             running = False
 
         """ assign axes based on controller config """
