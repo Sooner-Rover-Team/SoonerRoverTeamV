@@ -473,6 +473,7 @@ void loop() {
     #endif
   } else {
     deltaLoop = (millis() - lastLoop)/1000.0;
+    lastLoop = millis();
     for (int i = 0; i < 6; i++) {
       // if using proportional control, look at the difference between the current and desired speed
       if (proportionalControl && abs(currentSpeeds[i] - 126) < (126*Kp_thresh)) {
@@ -541,7 +542,6 @@ void loop() {
 
     //Serial.println();
     // remember milli time of the last loop
-    lastLoop = millis();
   }
 }
 
