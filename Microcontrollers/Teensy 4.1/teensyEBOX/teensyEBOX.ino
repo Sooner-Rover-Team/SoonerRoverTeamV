@@ -88,7 +88,7 @@ unsigned long timeOut = 0; // used to measure time between msgs. If we go a full
 // super awesome fun proportional wheel control variables
 int targetSpeeds[6] = {126, 126, 126, 126, 126, 126}; // neutral
 double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
-bool proportionalControl = false;
+bool proportionalControl = true;
 unsigned long lastLoop = 0; // milli time of last loop
 double deltaLoop = 0.0; // seconds since last loop
 double Kp = 3.5; // proportional change between target and current
@@ -453,12 +453,12 @@ void loop() {
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
-    // for (int i = 0; i < 6; i++) {
-    //   wheels[i].write(90);
-    //   delay(5);
-    //   currentSpeeds[i] = 126;
-    //   targetSpeeds[i] = 126;
-    // }
+    for (int i = 0; i < 6; i++) {
+      // wheels[i].write(90);
+      // delay(5);
+      currentSpeeds[i] = 126;
+      targetSpeeds[i] = 126;
+    }
     wheel0.write(90);
     wheel1.write(90);
     wheel2.write(90);
