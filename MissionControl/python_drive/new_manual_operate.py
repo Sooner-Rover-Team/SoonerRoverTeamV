@@ -428,7 +428,7 @@ if __name__ == "__main__":
             R_2 = (R_2+1)/2
             #rotate the wrist 360 using L2/R2
             if(abs(L_2) > THRESHOLD_LOW):
-                wrist_rotation = 126 + int(L_2*42)
+                wrist_rotation = 126 + int(L_2*52)
             elif(abs(R_2) > THRESHOLD_HIGH):
                 wrist_rotation = 126 - int(R_2*52)
             else:
@@ -437,11 +437,11 @@ if __name__ == "__main__":
             # Right joystick moves base and pitch/ yaw. This way, 
             #    from perspective of the claw, left moves claw left, up moves claw up, etc.
             if(abs(R_X) > THRESHOLD_HIGH):
-                base_rotation = 126 + int(R_X * 22)
+                base_rotation = 126 + int(R_X * 32)
             else:
                 base_rotation = 126
             if (abs(R_Y) > THRESHOLD_HIGH):
-                wrist_angle = 126 + int(R_Y * 15)
+                wrist_angle = 126 + int(R_Y * 55)
             else:
                 wrist_angle = 126
             
