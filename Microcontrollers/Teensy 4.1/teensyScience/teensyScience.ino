@@ -36,6 +36,7 @@
 // Servos can still be used on those pins though
 #define ACTUATOR_UP_PIN 2 // which pin is up depends on wiring. Can be reversed
 #define ACTUATOR_DOWN_PIN 3
+#define ACTUATOR_LIMIT_PIN
 
 #define CAROUSEL_PIN 5
 #define CAROUSEL_LIMIT_PIN A4
@@ -104,7 +105,7 @@ void updateMotors(CANMessage message) {
   if(microscopePosition == 0) {
     digitalWrite(MICROSCOPE_UP_PIN, HIGH);
   }
-  else if(microscopePosition == 2) {
+  else if((microscopePosition == 2) && !digitalRead(ACTUATOR_LIMIT_PIN)) {
     digitalWrite(MICROSCOPE_DOWN_PIN, HIGH);
   }
   else {
@@ -192,11 +193,10 @@ void loop()
 
   // If switch is triggered while carousel is moving, stop carousel. This should allign test tube properly
  if(!digitalRead(CAROUSEL_LIMIT_PIN) && carouselMoving && (carouselSpeed == 1)) {
-   Serial.println("limited");
+   //Serial.println("limited");
    carousel.write(90);
    carouselMoving = false;
  }
- //Serial.println(analogRead(MICROSCOPE_ENCODER_PIN));
 
   unsigned long curr_time = millis();
   // stop all motors after 1 second of no messages

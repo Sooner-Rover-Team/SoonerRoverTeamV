@@ -16,9 +16,9 @@
 //   the Teensy does not have to spend time printing to Serial and also saves memory space
 #define DEBUG 0 
 
-#define BICEP_PIN 3
-#define FOREARM_PIN 5
-#define BASE_PIN 4
+#define BICEP_PIN 21
+#define FOREARM_PIN 3
+#define BASE_PIN 13
 #define CAN_LED_PIN 2
 #define STOP 1500
 //-----------------------------------------------------------------
@@ -74,8 +74,8 @@ void setup () {
 
   // initial speed/position of motors
   base.write(90);
-  bicep.write(135); // inverse kinematics starts arm in this position right now
-  forearm.write(119);
+  bicep.write(180); // inverse kinematics starts arm in this position right now
+  forearm.write(170);
 }
 
 void updateMotors(CANMessage message) {
