@@ -2,17 +2,18 @@ import pygame
 import socket
 import configparser
 from math import ceil, floor
-import util
-from pygame.time import Clock
 import os
-
-# this allows the pygame window to accept inputs from the controller while the window is hidden (not in focus)
-os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
-
 """ Change the current directory so config loads right """
 if os.path.dirname(__file__) != '':
     current_folder = os.path.dirname(__file__)
     os.chdir(current_folder)
+
+import util
+from pygame.time import Clock
+
+# this allows the pygame window to accept inputs from the controller while the window is hidden (not in focus)
+os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
+
 
 """ Exit if there is no joystick """
 pygame.joystick.init()

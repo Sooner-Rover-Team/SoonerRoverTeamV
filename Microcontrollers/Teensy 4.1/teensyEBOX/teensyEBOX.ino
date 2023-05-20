@@ -82,17 +82,18 @@ Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
 Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
 // if some connections are reversed, wheel0.write(0) may not be the same direction as wheel1.write(0)
 bool wheelReverse[6] = {true, false, false, true, false, true};
-// PWM on mega is D2-D13. Using D8-13 for wheels, D7/D6 for gimbal, and D19/D20/D21 for LEDs
 
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
 
 // super awesome fun proportional wheel control variables
 int targetSpeeds[6] = {126, 126, 126, 126, 126, 126}; // neutral
 double currentSpeeds[6] = {126, 126, 126, 126, 126, 126};
-bool proportionalControl = false;
+bool proportionalControl = true;
 unsigned long lastLoop = 0; // milli time of last loop
 double deltaLoop = 0.0; // seconds since last loop
 double Kp = 3.5; // proportional change between target and current
+double Kp_thresh = 0.4; // % of wheel speed to apply proportional control under
+
 double error[6];
 
 // define time in microseconds of width of pulse
@@ -258,6 +259,7 @@ void updateWheels(unsigned char msg[], int msgSize) {
     if(msgSize == 5) {
       if(uint8_t(msg[2]) > 0) {
         digitalWrite(redPin, HIGH);
+        Serial.println("RED HIGH");
       }
       else {
         digitalWrite(redPin, LOW);
@@ -415,8 +417,8 @@ void loop() {
       //     Serial.print(".");
       //   }
       // }
-      //Serial.print(", port ");
-      //Serial.println(Udp.remotePort());
+      // Serial.print(", port ");
+      // Serial.println(Udp.remotePort());
     #endif
     // read the packet into packetBuffer
     Udp.read(packetBuffer, packetSize);
@@ -427,6 +429,7 @@ void loop() {
       }
       Serial.println();
     #endif
+    // timeOut = millis();
     if(packetBuffer[0] == WHEEL) { // means the UDP message was for the wheel system
       updateWheels(packetBuffer, packetSize);
     }
@@ -450,19 +453,18 @@ void loop() {
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
-    // for (int i = 0; i < 6; i++) {
-    //   wheels[i].write(90);
-    //   delay(5);
-    //   currentSpeeds[i] = 126;
-    //   targetSpeeds[i] = 126;
-    // }
+    for (int i = 0; i < 6; i++) {
+      // wheels[i].write(90);
+      // delay(5);
+      currentSpeeds[i] = 126;
+      targetSpeeds[i] = 126;
+    }
     wheel0.write(90);
     wheel1.write(90);
     wheel2.write(90);
     wheel3.write(90);
     wheel4.write(90);
     wheel5.write(90);
-    // wheel3.writeMicroseconds(1500);
     // gimbalVert.write(90);
     // gimbalHoriz.write(90);
 
@@ -473,7 +475,8 @@ void loop() {
     deltaLoop = (millis() - lastLoop)/1000.0;
     for (int i = 0; i < 6; i++) {
       // if using proportional control, look at the difference between the current and desired speed
-      if (proportionalControl) {
+      if (proportionalControl && abs(currentSpeeds[i] - 126) < (126*Kp_thresh)) {
+      // if (proportionalControl) {
         error[i] = targetSpeeds[i] - currentSpeeds[i];
         double output = error[i]*Kp*deltaLoop;
         currentSpeeds[i] += output; 
@@ -484,21 +487,29 @@ void loop() {
       if (targetSpeeds[i] == 126) currentSpeeds[i] = 126;
       // also clip the current speed value just to be safe
       currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
+
+      // if (i == 0) {
+      //   Serial.println(currentSpeeds[i]);
+      // }
+
+
       // if (wheelReverse[i]) {
       //   wheels[i].write((int)map(currentSpeeds[i], 252, 0, 0, 180)); 
-      //   // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
-      //   // Serial.print(", ");       
+      //   Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+      //   Serial.print(", ");       
       // } else {
       //   wheels[i].write((int)map(currentSpeeds[i], 0, 252, 0, 180));
-      //   // Serial.print((int)map(currentSpeeds[i], 0, 252, 0, 180));
-      //   // Serial.print(", "); 
+      //   Serial.print((int)map(currentSpeeds[i], 0, 252, 0, 180));
+      //   Serial.print(", "); 
       // }
-      wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
-      wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
-      wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
-      wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
-      wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
-      wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
+
+      // wheels[0].write((int)map(currentSpeeds[0], 252, 0, 0, 180));
+      // wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
+      // wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
+      // wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
+      // wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
+      // wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
+      // wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
     }
     // for (int i = 0; i < 6; i++) {
     //   if (wheelReverse[i]) {
