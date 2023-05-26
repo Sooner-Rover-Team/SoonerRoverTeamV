@@ -45,7 +45,7 @@
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(10, 0, 0, 101);
+IPAddress ip(192, 168, 1, 101);
 
 unsigned int localPort = 1001; // local port to listen on
 
@@ -304,9 +304,9 @@ void updateWheels(unsigned char msg[], int msgSize) {
         }
         for (int i = 0; i < 6; i++) {
           if (wheelReverse[i]) {
-          wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
-          Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
-          Serial.print(", ");       
+            wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
+          // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+          // Serial.print(", ");       
           } else {
             wheels[i].write((int)map(targetSpeeds[i], 0, 252, 0, 180));
         }
@@ -371,6 +371,10 @@ void sendArmCAN(unsigned char msg[], int msgSize) {
 }
 
 void sendScienceCAN(unsigned char msg[], int msgSize) {
+  #if DEBUG
+  Serial.println("science can time");
+  #endif
+
   if(msgSize == 6) {
     checkSum = 0;
     for(int i=1; i<5; i++) { 
@@ -381,11 +385,18 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
       message.id = SCIENCE; // ID for lower arm
       message.len = 4;
       memcpy(message.data, &msg[1], 4); // actuator, carousel, fan, microscope
-      bool ok = ACAN_T4::can1.tryToSend (message) ;
+      // delay(3000);
+      bool ok = ACAN_T4::can3.tryToSend(message) ;
+
       if(ok) {
         #if DEBUG
           Serial.print("Science sent, ");
         #endif   
+      }
+      else {
+        #if DEBUG
+          Serial.println("Error sending science message");
+        #endif  
       }
     }
     else {
@@ -396,8 +407,8 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
   }
   else {
     #if DEBUG
-        Serial.println("checkSum for SCIENCE was incorrect... ignoring this message.");
-      #endif
+      Serial.println("length for SCIENCE was incorrect... ignoring this message.");
+    #endif
   }
 }
 
@@ -407,18 +418,18 @@ void loop() {
   if (packetSize) {
     digitalWrite(CAN_LED, HIGH);
     #if DEBUG
-      // Serial.print("Received packet of size ");
-      // Serial.println(packetSize);
-      // Serial.print("From ");
-      // IPAddress remote = Udp.remoteIP();
-      // for (int i=0; i < 4; i++) {
-      //   Serial.print(remote[i], DEC);
-      //   if (i < 3) {
-      //     Serial.print(".");
-      //   }
-      // }
-      // Serial.print(", port ");
-      // Serial.println(Udp.remotePort());
+      Serial.print("Received packet of size ");
+      Serial.println(packetSize);
+      Serial.print("From ");
+      IPAddress remote = Udp.remoteIP();
+      for (int i=0; i < 4; i++) {
+        Serial.print(remote[i], DEC);
+        if (i < 3) {
+          Serial.print(".");
+        }
+      }
+      Serial.print(", port ");
+      Serial.println(Udp.remotePort());
     #endif
     // read the packet into packetBuffer
     Udp.read(packetBuffer, packetSize);
