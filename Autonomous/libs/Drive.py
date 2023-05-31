@@ -283,3 +283,14 @@ class Drive:
                         
         
          
+    def backupManeuver(self):
+        #backs up and turns to avoid running into the last detected sign. Also allows it to get a lock on heading
+        self.speeds = [-60,-60]
+        self.printSpeeds()
+        sleep(2)
+        self.speeds = [0,0]
+        self.printSpeeds()
+        sleep(2)
+        self.speeds = [80,20]
+        self.printSpeeds()
+        sleep(4)
