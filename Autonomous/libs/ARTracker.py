@@ -199,6 +199,8 @@ class ARTracker:
         # converts to grayscale
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image)  
         bw = image #will hold the black and white image
+        cv2.imshow('bw', image)
+        cv2.waitKey(1)
     
         self.index1 = -1
         self.index2 = -1
