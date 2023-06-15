@@ -2,10 +2,20 @@ import datetime
 from discord.ext import commands, tasks
 import discord
 from dataclasses import dataclass
+import configparser
+import os
 
-BOT_TOKEN = "MTExODcwMDc5NDQ3NzI5MzU5OA.G8g-I3.-xrCSKppPpqGCY_ksIxuMORUH56KB38tIZIDNI"
-CHANNEL_ID = 1118373149969498252
-MAX_SESSION_TIME_MINUTES = 45
+""" Change the current directory so config loads right """
+if os.path.dirname(__file__) != '':
+    current_folder = os.path.dirname(__file__)
+    os.chdir(current_folder)
+
+config = configparser.ConfigParser()
+config.read('./config.ini')
+
+BOT_TOKEN = str(config['BOT_SETUP']['TOKEN'])
+CHANNEL_ID = int(config['BOT_SETUP']['CHANNEL_ID'])
+MAX_SESSION_TIME_MINUTES = config.getint('BOT_SETUP', 'MAX_SESSION_TIME')
 
 @dataclass
 class Session:
