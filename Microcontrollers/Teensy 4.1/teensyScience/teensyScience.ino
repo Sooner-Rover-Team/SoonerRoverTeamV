@@ -1,50 +1,29 @@
-#include <EtherCard.h>
-#include <IPAddress.h>
+#include <ACAN_T4.h>
 #include <Servo.h>
 
-/*
- * TODO: 
- *  - configure base station side to send the correct numbers.
- *  - fix linActuator limit switches to only move up when down limit is on and only down when up is on.
- */
-
 
 /*
- * NANO PWM pins: D3, D5, D6, D9, D10, D11
- * 
- * PINS USED BY ETHERNET SHEILD: D10, D11, D12, D13 (it uses SPI)
- * 
  * USING TALONS TO CONTROL ALL MOTORS (ACTYUATOR/CAROUSEL) -> TREAT EACH MOTOR AS A CONTINUOUS SERVO
- *  The carousel and linear actuator are going to have external limit switches to monitor their positions.
- * 
- * LINEAR ACTUATOR - D2/D3
- * CAROUSEL - D5
- *  - limit switch - A4
-
- * FAN - D6
- * MICROSCOPE - D7/D8
- *    - encoder - A5
+ *  The carousel has an external limit switches to maintain alignment between test tubes and fan cone.
  */
 
 // Set equal to 1 for serial debugging
-#define DEBUG 1
+#define DEBUG 0
 
-// 2 is the drill ID
 #define SCIENCE_ID 0x03
 
-// Note: analogWrite() can not be used on pins 9 or 10 because of the servo library.
-// Servos can still be used on those pins though
-#define ACTUATOR_UP_PIN 2 // which pin is up depends on wiring. Can be reversed
-#define ACTUATOR_DOWN_PIN 3
-#define ACTUATOR_LIMIT_PIN
+// which pin is up depends on wiring. Can be reversed
+#define ACTUATOR_UP_PIN 16
+#define ACTUATOR_DOWN_PIN 17
+//#define ACTUATOR_LIMIT_PIN
 
-#define CAROUSEL_PIN 5
-#define CAROUSEL_LIMIT_PIN A4
+#define CAROUSEL_PIN 13
+#define CAROUSEL_LIMIT_PIN 3
 
-#define FAN_PIN 6
+#define FAN_PIN 21 // what 9 + 10
 #define MICROSCOPE_UP_PIN 7
 #define MICROSCOPE_DOWN_PIN 8
-#define MICROSCOPE_ENCODER_PIN A5
+#define MICROSCOPE_ENCODER_PIN 10
 
 // servo objects for talon motor controllers
 Servo carousel, fan;
@@ -91,10 +70,12 @@ void updateMotors(CANMessage message) {
   if(carouselSpeed==0) { //if carousel already moving, no need to call write function again
     carousel.write(130);
     carouselMoving = true;
+    delay(10);
   }
   else if(carouselSpeed==2) {
     carousel.write(50);
     carouselMoving = true;
+    delay(10);
   }
   else if (carouselSpeed == 1) {}
   
@@ -105,7 +86,7 @@ void updateMotors(CANMessage message) {
   if(microscopePosition == 0) {
     digitalWrite(MICROSCOPE_UP_PIN, HIGH);
   }
-  else if((microscopePosition == 2) && !digitalRead(ACTUATOR_LIMIT_PIN)) {
+  else if(microscopePosition == 2) {
     digitalWrite(MICROSCOPE_DOWN_PIN, HIGH);
   }
   else {
@@ -172,6 +153,7 @@ void loop()
   // receive CAN message if one is available
   if (ACAN_T4::can3.receive (message)) {
     #if DEBUG // print the message for debugging
+    Serial.println("Message received");
       if(message.id == 0x03) {
         Serial.print("ID=");
         Serial.print(message.id);
@@ -200,7 +182,7 @@ void loop()
 
   unsigned long curr_time = millis();
   // stop all motors after 1 second of no messages
-  if (curr_time - stopTimeout >= 3000) {
+  if (curr_time - stopTimeout >= 1000) {
     stopTimeout = millis();
     carousel.write(90);
     fan.write(90);
@@ -209,6 +191,4 @@ void loop()
       Serial.println("Stopped motors");
     #endif
   }
-
-  delay(5);
 }

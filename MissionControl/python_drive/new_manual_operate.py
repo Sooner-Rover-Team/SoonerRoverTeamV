@@ -29,11 +29,11 @@ USING_BRIDGE = config.getboolean('Connection', 'USING_BRIDGE')
 BRIDGE_HOST = config['Connection']['BRIDGE_HOST'] # is this the base station ip ?
 EBOX_HOST = config['Connection']['EBOX_HOST']
 EBOX_PORT = int(config['Connection']['EBOX_PORT'])
-CONT_CONFIG = int(config['Controller']['CONFIG']) # change this in config if using a different controller than the old xbox 360
+CONT_CONFIG = config['Controller']['CONFIG'] # change this in config if using a different controller than the old xbox 360
 
 """ Define axes and button numbers for different controllers """
 
-if CONT_CONFIG == 0:
+if CONT_CONFIG == 'xbox':
     L_X_AXIS = 0
     L_Y_AXIS = 1
     R_X_AXIS = 2
@@ -41,25 +41,31 @@ if CONT_CONFIG == 0:
     L_2_AXIS = 4
     R_2_AXIS = 5
     gimbal = 0
-
-
-elif CONT_CONFIG == 1:
+    A_BUTTON = 0
+    B_BUTTON = 1
+    X_BUTTON = 2
+    Y_BUTTON = 3
+    L_BUMPER = 4
+    R_BUMPER = 5
+    SELECT = 6
+    START = 7
+elif CONT_CONFIG == 'ps':
     L_X_AXIS = 0
     L_Y_AXIS = 1
-    L_2_AXIS = 2
-    R_X_AXIS = 3
-    R_Y_AXIS = 4
+    L_2_AXIS = 4
+    R_X_AXIS = 2
+    R_Y_AXIS = 3
     R_2_AXIS = 5
-    gimbal = 0
 
-A_BUTTON = 0
-B_BUTTON = 1
-X_BUTTON = 2
-Y_BUTTON = 3
-L_BUMPER = 4
-R_BUMPER = 5
-SELECT = 6
-START = 7
+    #gimbal = 0
+    A_BUTTON = 0
+    B_BUTTON = 1
+    X_BUTTON = 2
+    Y_BUTTON = 3
+    L_BUMPER = 10
+    R_BUMPER = 9
+    SELECT = 4
+    START = 6
 
 """ Pygame stuff """
 pygame.init()
@@ -333,7 +339,7 @@ if __name__ == "__main__":
         R_Y = joystick.get_axis(R_Y_AXIS)
         L_2 = joystick.get_axis(L_2_AXIS)
         R_2 = joystick.get_axis(R_2_AXIS)
-        gim = joystick.get_hat(gimbal) # size 2, gim[0]= left/right, gim[1]= up/down
+        gim = 0 #joystick.get_hat(gimbal) # size 2, gim[0]= left/right, gim[1]= up/down
 
         """ Generate msgs from controller input and send messages to designated subsystem """
         # send message to move the wheels
@@ -370,6 +376,28 @@ if __name__ == "__main__":
             if sportMode:
                 leftwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in leftwheels]
                 rightwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in rightwheels]
+
+            FRONT_MULT = 1.4
+
+
+            leftwheels[0] -= 126
+            leftwheels[0] *= FRONT_MULT
+            leftwheels[0] = int(leftwheels[0]) + 126
+
+            if leftwheels[0] > 252:
+                leftwheels[0] = 252
+            elif leftwheels[0] < 0:
+                leftwheels[0] = 0
+
+            rightwheels[0] -= 126
+            rightwheels[0] *= FRONT_MULT
+            rightwheels[0] = int(rightwheels[0]) + 126
+
+            if rightwheels[0] > 252:
+                rightwheels[0] = 252
+            elif rightwheels[0] < 0:
+                rightwheels[0] = 0
+
 
             data = wheel_message(leftwheels, rightwheels) #gim+1 to avoid sending negative #s
             if (isstopped(leftwheels,rightwheels)):
@@ -442,7 +470,7 @@ if __name__ == "__main__":
             else:
                 base_rotation = 126
             if (abs(R_Y) > THRESHOLD_HIGH):
-                wrist_angle = 126 + int(R_Y * 55)
+                wrist_angle = 126 + int(R_Y * 42) # for fine mainupulation change this to 32 (currently 55)
             else:
                 wrist_angle = 126
             
@@ -479,17 +507,17 @@ if __name__ == "__main__":
             #         microscope_position=180
             #     elif(microscope_position<0):
             #         microscope_position=0
-            if(gim[1] < 0):
-                microscope_position = 0
-            elif(gim[1] > 0):
-                microscope_position = 2
-            else:
-                microscope_position = 1
+            # if(gim[1] < 0):
+            #     microscope_position = 2
+            # elif(gim[1] > 0):
+            #     microscope_position = 0
+            # else:
+            microscope_position = 1
 
             if (joystick.get_button(L_BUMPER)): 
-                carousel_turn = 0
-            elif (joystick.get_button(R_BUMPER)):
                 carousel_turn = 2
+            elif (joystick.get_button(R_BUMPER)):
+                carousel_turn = 0
             else:
                 carousel_turn = 1
 
