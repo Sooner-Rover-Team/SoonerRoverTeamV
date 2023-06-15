@@ -15,7 +15,6 @@ lazy-loader==0.2
 mypy-extensions==1.0.0
 networkx==3.1
 numpy==1.24.3
-opencv-contrib-python==4.7.0.72
 opencv-python==4.7.0.72
 packaging==23.1
 pathspec==0.11.1
