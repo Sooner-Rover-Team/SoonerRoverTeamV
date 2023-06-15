@@ -45,7 +45,11 @@
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+<<<<<<< HEAD
 IPAddress ip(192, 168,1,101);
+=======
+IPAddress ip(192, 168, 1, 101);
+>>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
 
 unsigned int localPort = 1001; // local port to listen on
 
@@ -303,12 +307,24 @@ void updateWheels(unsigned char msg[], int msgSize) {
         for (int i = 0; i < 6; i++) {
           targetSpeeds[i] = (uint8_t)msg[i+2];
         }
+<<<<<<< HEAD
         // wheel0.write((int)map(targetSpeeds[0], 0, 252, 0, 180));
         // wheel1.write((int)map(targetSpeeds[1], 0, 252, 0, 180));
         // wheel2.write((int)map(targetSpeeds[2], 0, 252, 0, 180));
         // wheel3.write((int)map(targetSpeeds[3], 252, 0, 0, 180));
         // wheel4.write((int)map(targetSpeeds[4], 0, 252, 0, 180));
         // wheel5.write((int)map(targetSpeeds[5], 252, 0, 0, 180));         
+=======
+        for (int i = 0; i < 6; i++) {
+          if (wheelReverse[i]) {
+            wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
+          // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
+          // Serial.print(", ");       
+          } else {
+            wheels[i].write((int)map(targetSpeeds[i], 0, 252, 0, 180));
+        }
+    }          
+>>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
         //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9])); // NOT IMPLEMENTED RIGHT NOW
       }
       else {
@@ -369,6 +385,10 @@ void sendArmCAN(unsigned char msg[], int msgSize) {
 }
 
 void sendScienceCAN(unsigned char msg[], int msgSize) {
+  #if DEBUG
+  Serial.println("science can time");
+  #endif
+
   if(msgSize == 6) {
     checkSum = 0;
     for(int i=1; i<5; i++) { 
@@ -379,9 +399,24 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
       message.id = SCIENCE; // ID for lower arm
       message.len = 4;
       memcpy(message.data, &msg[1], 4); // actuator, carousel, fan, microscope
+<<<<<<< HEAD
       bool ok = ACAN_T4::can3.tryToSend (message) ;
       if(ok && DEBUG) {
         Serial.print("Science sent");
+=======
+      // delay(3000);
+      bool ok = ACAN_T4::can3.tryToSend(message) ;
+
+      if(ok) {
+        #if DEBUG
+          Serial.print("Science sent, ");
+        #endif   
+>>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
+      }
+      else {
+        #if DEBUG
+          Serial.println("Error sending science message");
+        #endif  
       }
     }
     else {
@@ -392,7 +427,11 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
   }
   else {
     #if DEBUG
+<<<<<<< HEAD
         Serial.println("checkSum for SCIENCE was incorrect... ignoring this message.");
+=======
+      Serial.println("length for SCIENCE was incorrect... ignoring this message.");
+>>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
     #endif
   }
 }
@@ -402,6 +441,7 @@ void loop() {
   int packetSize = Udp.parsePacket();
   if (packetSize) {
     digitalWrite(CAN_LED, HIGH);
+<<<<<<< HEAD
     // #if DEBUG // useful for debugging UDP msgs
       // Serial.print("Received packet of size ");
       // Serial.println(packetSize);
@@ -416,6 +456,22 @@ void loop() {
       // Serial.print(", port ");
       // Serial.println(Udp.remotePort());
     // #endif
+=======
+    #if DEBUG
+      Serial.print("Received packet of size ");
+      Serial.println(packetSize);
+      Serial.print("From ");
+      IPAddress remote = Udp.remoteIP();
+      for (int i=0; i < 4; i++) {
+        Serial.print(remote[i], DEC);
+        if (i < 3) {
+          Serial.print(".");
+        }
+      }
+      Serial.print(", port ");
+      Serial.println(Udp.remotePort());
+    #endif
+>>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
     // read the packet into packetBuffer
     Udp.read(packetBuffer, packetSize);
     #if DEBUG
@@ -468,6 +524,7 @@ void loop() {
     #endif
   } else {
     deltaLoop = (millis() - lastLoop)/1000.0;
+    lastLoop = millis();
     for (int i = 0; i < 6; i++) {
       // if using proportional control, look at the difference between the current and desired speed
       if (proportionalControl && abs(currentSpeeds[i] - 126) < (126*Kp_thresh)) {
@@ -492,7 +549,6 @@ void loop() {
     wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
     
     // remember milli time of the last loop
-    lastLoop = millis();
   }
 }
 

@@ -92,8 +92,8 @@ THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 FPS = 20
 flash = False
-mode = 'operate' #;'drive'
-arm_installed = True # Change to False for science mission
+mode = 'drive' #;'drive'
+arm_installed = False # Change to False for science mission
 sportMode = False
 
 """ Socket stuff """
@@ -528,13 +528,15 @@ if __name__ == "__main__":
                 #print("a new button is pressed, so a new packet is sent")
                 #print(act_speed, carousel_turn, claw_position, microscope_position)
                 data = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
+                print(act_speed, carousel_turn, claw_position, microscope_position)
                 ebox_socket.sendall(data)
             else:
                 numSameMessages+=1
             # THIS SENDS MSGS REALLY FAST AND SLOWS DOWN THE ARDUINO NANO CAUSING DELAY, LEAVE UNTIL SWITCH TO TEENSY
             # msg = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
             # print(act_speed, carousel_turn, claw_position, microscope_position)
-            #science_socket.sendall(msg)
+            # print(msg)
+            # ebox_socket.sendall(msg)
 
         """ Generate pyGame gui based on inputs from controller """
         claw_x = coord_u
