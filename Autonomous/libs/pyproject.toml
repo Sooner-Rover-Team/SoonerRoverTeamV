@@ -1,0 +1,24 @@
+[project]
+name = "libs"
+version = "0.1.0"
+description = "Add a short description here"
+dependencies = [
+    "opencv-python~=4.7.0.72",
+    "numpy~=1.24.3",
+    "darknet~=0.3",
+    "scikit-image~=0.21.0",
+    "black~=23.3.0",
+    "opencv-contrib-python~=4.7.0.72",
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+
+[tool.hatch.metadata]
+allow-direct-references = true
