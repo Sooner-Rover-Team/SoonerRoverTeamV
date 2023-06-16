@@ -4,6 +4,15 @@ import discord
 from dataclasses import dataclass
 import configparser
 import os
+import prompts # file that contains all bot prompts/actions
+
+"""
+TODO: bot commands: roll dice, announce meetings, post links to stuff
+
+MESSAGE is a structure containing the author, msg from author and channel the msg came from
+@bot.event is a decorator that the bot uses to tell which function to call. It knows on_ready(), on_messsage(), on_member_join(), on_error(),
+@bot.command is basically custom events. use @bot.command(name='x') where x is the command the user types in discord to call that function like --help
+"""
 
 """ Change the current directory so config loads right """
 if os.path.dirname(__file__) != '':
@@ -22,51 +31,61 @@ class Session:
     is_active: bool = False
     start_time: int = 0
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-session = Session()
+# attempts to send a message to discord based on the users msg
+async def send_message(message, user_message, is_private):
+    try:
+        response = response.handle_response(user_message)
+        await message.author.send(response) if is_private else await message.channel.send(response)
+    except Exception as e:
+        print(e)
 
-@bot.event
-async def on_ready():
-    print("Hello! Study bot is ready!")
-    channel = bot.get_channel(CHANNEL_ID)
-    await channel.send("Hello! Study bot is ready!")
+def run_discord_bot():
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.all()) # initialize bot
+    session = Session()
+
+    @bot.event # function decorator, telling the bot to call this function when an event occurs
+    async def on_ready(): 
+        print("Hello! Study bot is ready!")
+        channel = bot.get_channel(CHANNEL_ID)
+        await channel.send("Hello! Study bot is ready!")
+
+    @bot.event
+    async def on_member_join(member):
+        await member.create_dm()
+        await member.dm_channel.send(f'Hi {member.name}, welcome to the SORO Discord server!')
+
+    @bot.event
+    async def on_message(message): # bot knows to call this function when a msg is given because of the parameters
+        if message.author == bot.user: # prevents the bot from responding to itself and creating an infinite loop
+            return
+        
+        username = str(message.author)
+        user_message = str(message.content)
+        channel = str(message.channel)
+
+        print(f"{username} said: '{user_message}' in ({channel})") # debug output
+
+        if(user_message[0] == '__'): # __msg for private msgs, --msg for public msgs
+            user_message = user_message[2:] # remove flag to process msg
+            await send_message(message, user_message, is_private=True)
+        else:
+            user_message = user_message[2:]
+            await send_message(message, user_message, is_private=False)
+
+    @bot.command(name='!69')
+    async def meme():
+        channel = bot.get_channel(CHANNEL_ID)
+        await channel.send("LOLLLLL")
+
+    bot.run(BOT_TOKEN)
 
 
-@tasks.loop(minutes=MAX_SESSION_TIME_MINUTES, count=2)
-async def break_reminder():
+# @tasks.loop(minutes=MAX_SESSION_TIME_MINUTES, count=2)
+# async def break_reminder():
 
-    # Ignore the first execution of this command.
-    if break_reminder.current_loop == 0:
-        return
+#     # Ignore the first execution of this command.
+#     if break_reminder.current_loop == 0:
+#         return
 
-    channel = bot.get_channel(CHANNEL_ID)
-    await channel.send(f"**Take a break!** You've been studying for {MAX_SESSION_TIME_MINUTES} minutes.")
-
-@bot.command()
-async def start(ctx):
-    if session.is_active:
-        await ctx.send("A session is already active!")
-        return
-
-    session.is_active = True
-    session.start_time = ctx.message.created_at.timestamp()
-    human_readable_time = ctx.message.created_at.strftime("%H:%M:%S")
-    break_reminder.start()
-    await ctx.send(f"New session started at {human_readable_time}")
-
-
-@bot.command()
-async def end(ctx):
-    if not session.is_active:
-        await ctx.send("No session is active!")
-        return
-
-    session.is_active = False
-    end_time = ctx.message.created_at.timestamp()
-    duration = end_time - session.start_time
-    human_readable_duration = str(datetime.timedelta(seconds=duration))
-    break_reminder.stop()
-    await ctx.send(f"Session ended after {human_readable_duration}.")
-
-
-bot.run(BOT_TOKEN)
+#     channel = bot.get_channel(CHANNEL_ID)
+#     await channel.send(f"**Take a break!** You've been studying for {MAX_SESSION_TIME_MINUTES} minutes.")
