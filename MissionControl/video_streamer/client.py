@@ -19,7 +19,7 @@ videowidth = 600  # width of html video element
 MAX_CAMERAS = 10 # number of cameras to try opening if none are defined
 
 # initialize a flask object
-app: Flask = Flask(__name__)
+app = Flask(__name__)
 
 
 
@@ -76,7 +76,7 @@ def generate():
 
     # declare variables for calculating time differences
     lastwait = 0
-    last_time = time.perf_counter_ns()/1_000_000
+    last_time = time.perf_counter()/1_000
 
     # loop over frames from the output stream
     while True:
@@ -117,7 +117,7 @@ def generate():
             continue
 
         # find difference in times between iterations
-        current_time = time.perf_counter_ns()/1_000_000 # in milliseconds
+        current_time = time.perf_counter()/1_000 # in milliseconds
         # difference = (currenttime-lasttime)*1000  # in milliseconds
         future_time = last_time + target_wait
         calculated_wait = future_time - current_time if future_time - current_time > 0 else 0

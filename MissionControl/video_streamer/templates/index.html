@@ -1,20 +1,23 @@
 <!doctype html>
 
+<!-- The style information -->
 <style>
+  <!--This code makes the body-->
   body {
     background-color: white;
   }
-  
+  <!--This code makes the header-->
   h1 {
     color: white;
     text-align: center;
   }
-  
+  <!--This code makes the paragraph-->
   p {
     font-family: verdana;
     color:black;
     font-size: 20px;
   }
+  <!--This code makes the separation/grouping of two paragraphs-->
   div {
     color:black;
     font-size: large;
@@ -23,21 +26,34 @@
   </style>
 
 
+<!--This code makes the title of the webpage-->
 <head>
   <title>Webcam Streamer</title>
 </head>
 
+<!-- This code makes the body-->
 <body>
+  <!--Code to tell the browser to send data via server-->
   <form method="post" action='/'>
+    <!--Code for inserting logo-->
     <img src={{url_for('static',filename="logo.png" )}} style="width: 200px;">
+    
+    <!--Allows you to zoom in or out of video-->
     <div>
+      <!--Set up frame to where the video is-->
       Zoom: <input type="range" id="zoomslider" name="zoomslider" min="100" value="{{videowidth}}" max="{{maxframesize*2}}" >
+      <!--Used to tell you how big the video is-->
       <span id="zoomvalue">{{ videowidth }}</span>px
+      <!--Button for "Same as frame size"-->
       <button id='zoomtoframesize'>Same as Frame Size</button>
 
     </div>
+
+
     <div>
+      <!--Where you get the video feed from for the url, url is a placeholder-->
       <img id="videoframe" src="{{ url_for('video_feed') }}" style="width: {{videowidth*activestreams}}px;">
+      <!--Java script for variables being used-->
       <script>
         const zoomslider = document.getElementById('zoomslider');
         const zoomvalue = document.getElementById('zoomvalue');
@@ -56,15 +72,21 @@
         })
       </script>
     </div>
+
+    <!--Tells you if camera/cameras is connected or not-->
     <div>
+      <!--Connects the camera-->
       Cameras Connected: {{ camerasconnected }}
+      <!--Tells you what action was just done-->
       Active Streams: {{ activestreams }}
     </div>
     
+    <!--Slider button to controls the quality of the video-->
     <div>
       Quality of Encoded Image:
       <input type="range" min="1" max="100" value="{{ encodingquality }}" id="qualityslider" name="qualityslider">
       <span id="qualityvalue">{{ encodingquality }}</span>%
+      <!--Send quality button-->
       <input type="submit" name="qualitysubmit" value="Send Quality">
       <script>
         const qualityslider = document.getElementById('qualityslider');
@@ -74,8 +96,11 @@
         })
       </script>
     </div>
+
+    <!--Controls the size of frame-->
     <div>
       Frame Size:
+      <!--Set the frame-->
       <input type="range" id="sizeslider" min="60" max="{{ maxframesize }}" value="{{ framesize }}" name="sizeslider">
       <span id='framesizevalue'> {{framesize}}</span>px
       <script>
@@ -85,11 +110,15 @@
           framevalue.textContent = frameslider.value;
         })
       </script>
+      <!--"Send Frame Size" button-->
       <input type="submit" name="sizesubmit" value="Send Frame Size">
     </div>
+
+    <!---->
     <div>
       Wait Between Sending Frames: {{ responsewait }}ms
     </div>
+    <!--Set the fps-->
     <div>
       FPS:
       {%for i in [30,20,15,12,10,8,5,4,3,2,1]%}
@@ -97,6 +126,7 @@
         {%endif%}>
       {%endfor%}
     </div>
+    <!--All of the code below controls the cameras like when to stop/start recording and the turn of the camera-->
     {%for i in range(0, camerasconnected)%}
     <div>
       <input type="submit" name="startvs{{i+1}}" value="Start VS {{i+1}}">
