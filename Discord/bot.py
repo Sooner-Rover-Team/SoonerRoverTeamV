@@ -34,50 +34,52 @@ class Session:
 # attempts to send a message to discord based on the users msg
 async def send_message(message, user_message, is_private):
     try:
-        response = response.handle_response(user_message)
+        response = prompts.handle_response(user_message)
         await message.author.send(response) if is_private else await message.channel.send(response)
     except Exception as e:
         print(e)
 
 def run_discord_bot():
-    bot = commands.Bot(command_prefix="!", intents=discord.Intents.all()) # initialize bot
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.all()) # initialize bot, prefix is used with bot command events
     session = Session()
 
     @bot.event # function decorator, telling the bot to call this function when an event occurs
     async def on_ready(): 
         print("Hello! Study bot is ready!")
         channel = bot.get_channel(CHANNEL_ID)
-        await channel.send("Hello! Study bot is ready!")
+        #await channel.send("Hello! Study bot is ready!")
 
     @bot.event
     async def on_member_join(member):
         await member.create_dm()
-        await member.dm_channel.send(f'Hi {member.name}, welcome to the SORO Discord server!')
+        await member.dm_channel.send(f'Hi {member.name}, welcome to the SORO Discord server! Type !help to get a list of my functions :)')
 
     @bot.event
     async def on_message(message): # bot knows to call this function when a msg is given because of the parameters
         if message.author == bot.user: # prevents the bot from responding to itself and creating an infinite loop
             return
         
-        username = str(message.author)
         user_message = str(message.content)
+        if user_message[0] != '!': return # each Remi command must start with !
+
+        username = str(message.author)
         channel = str(message.channel)
 
         print(f"{username} said: '{user_message}' in ({channel})") # debug output
 
-        if(user_message[0] == '__'): # __msg for private msgs, --msg for public msgs
+        if(user_message[1] == '!'): # !!msg to reply in your DM
             user_message = user_message[2:] # remove flag to process msg
             await send_message(message, user_message, is_private=True)
         else:
-            user_message = user_message[2:]
+            user_message = user_message[1:]
             await send_message(message, user_message, is_private=False)
 
-    @bot.command(name='!69')
-    async def meme():
-        channel = bot.get_channel(CHANNEL_ID)
-        await channel.send("LOLLLLL")
-
     bot.run(BOT_TOKEN)
+
+    # @bot.command(name='69') # if using on_message(), commands will be ignored since they are passed to on_message instead
+    # async def meme(ctx):
+    #     channel = bot.get_channel(CHANNEL_ID)
+    #     await channel.send("LOLLLLL")
 
 
 # @tasks.loop(minutes=MAX_SESSION_TIME_MINUTES, count=2)
