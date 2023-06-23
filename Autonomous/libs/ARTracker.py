@@ -34,7 +34,7 @@ class ARTracker:
             if os.path.isabs(configFile):
                 print(configFile)
             else:
-                print("{os.getcwd()}/{configFile}")
+                print(f"{os.getcwd()}/{configFile}")
             exit(-2)
 
         # Set variables from the config file

@@ -6,6 +6,8 @@ from libs import UDPOut
 from libs import Drive
 import threading
 from time import sleep
+import signal
+import sys
 
 mbedIP='10.0.0.101'
 mbedPort=1001
@@ -26,6 +28,13 @@ argParser.add_argument("-ll", "--latLong", type=str, help="takes a filename for 
 args = argParser.parse_args()
 #Gets a list of coordinates from user and drives to them and then tracks the tag
 #Set id1 to -1 if not looking for a tag
+
+# EMERGENCY FUNCTION TO CLOSE CAMERA
+def signal_handler(sig, frame):
+    print("Closing cameras")
+    rover.tracker.caps[0].release()
+    sys.exit(0)
+
 def drive(rover):
     global flashing
     idList = [-1,-1]
@@ -51,21 +60,25 @@ def drive(rover):
                 else:
                     if len(coords) != 2:
                         print("Error on line " + str(lineNum) + ": Insufficient number of coordinates. Please enter <lat long>")
-                        break        
+                        break  
+                    print(coords)
                     locations.append(coords)
             f.close()
 
     flashing = False
     UDPOut.sendLED(mbedIP, mbedPort, 'r')
+    print(rover.tracker.cameras)
     found = rover.driveAlongCoordinates(locations,id1, id2)
     
+
     if id1 != -1:
         rover.trackARMarker(id1, id2)
     
     flashing=True
     lights = threading.Thread(target=flash)
     lights.start()
-    #UDPOut.sendLED(mbedIP, mbedPort, 'g')
+    UDPOut.sendLED(mbedIP, mbedPort, 'g')
+
 
 if __name__ == "__main__":
     os.chdir(path)
@@ -83,6 +96,7 @@ if __name__ == "__main__":
     mbedIP = str(config['CONFIG']['MBED_IP'])
     mbedPort = int(config['CONFIG']['MBED_PORT'])
 
+    signal.signal(signal.SIGINT, signal_handler)
     rover = Drive.Drive(50, args.cameraInput)
     
     drive(rover)

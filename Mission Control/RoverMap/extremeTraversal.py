@@ -12,7 +12,7 @@ from libs import Location
 
 if __name__ == '__main__':
 
-    loc = Location.Location('10.0.0.222', '55556')
+    loc = Location.Location('192.168.1.102', '55556')
     print('Starting GPS')
     loc.start_GPS()
     loc.start_GPS_thread()

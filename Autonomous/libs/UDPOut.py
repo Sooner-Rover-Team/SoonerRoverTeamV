@@ -15,9 +15,9 @@ def sendWheelSpeeds(HOST, PORT, fl,ml,rl,fr,mr,rr):
     msg = bytearray(9)
 
     #start byte is the # character
-    msg[0] = 0x23
+    msg[0] = 0x01
     #byte to tell us what type of message it is.
-    msg[1] = 0x00 #using hexadecimal since if the code changes, it will likely have to be in hex
+    msg[1] = 0x01 #using hexadecimal since if the code changes, it will likely have to be in hex
     
     #Add the speeds to the message, while simultaneously summing them for the verification bit
     speeds = [fl,ml,rl,fr,mr,rr]
@@ -45,7 +45,7 @@ def sendLED(HOST, PORT, color):
     green = 0
     blue = 0
     msg = bytearray(5)
-    msg[0] = 0x23
+    msg[0] = 0x01
     msg[1] = 0x02
     if color == 'r':
         red = 255

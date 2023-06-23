@@ -18,6 +18,7 @@ class Location:
     def __init__(self, ip, port):
         self.swift_IP = ip
         self.swift_port = port
+        print(f'IP: {ip} port: {port}')
         self.latitude = 0
         self.longitude = 0
         self.old_latitude = 0
@@ -28,7 +29,7 @@ class Location:
         self.bearing = 0.0
         self.running = True
         self.all_zero = True
-        self.wait_time = .1
+        self.wait_time = 1
 
     def config(self):
         # read from a file, probably configure this to work with
