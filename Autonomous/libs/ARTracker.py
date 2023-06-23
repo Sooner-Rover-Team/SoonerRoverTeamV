@@ -5,12 +5,14 @@ import configparser
 import sys
 from time import sleep
 import os
+import signal
 '''
 darknetPath = os.path.dirname(os.path.abspath(__file__)) + '/../YOLO/darknet/'
 sys.path.append(darknetPath)
 from darknet_images import *
 from darknet import load_network
 '''
+
 
 class ARTracker:
 
@@ -27,6 +29,7 @@ class ARTracker:
         self.useYOLO = useYOLO
         self.cameras = cameras
         
+
         # Open the config file
         config = configparser.ConfigParser(allow_no_value=True)
         if not config.read(configFile):
@@ -63,11 +66,11 @@ class ARTracker:
 
         # Initialize video writer, fps is set to 5
         if self.write:
-            self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(
-                self.format[0], self.format[1], self.format[2], self.format[3]), 5, (self.frameWidth, self.frameHeight), False)
+            self.videoWriter = cv2.VideoWriter("autonomous.avi", cv2.VideoWriter_fourcc(self.format[0], self.format[1], self.format[2], self.format[3]),
+                                               20, (self.frameWidth, self.frameHeight))
         
         # Set the ar marker dictionary
-        self.markerDict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+        self.markerDict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         
         # Initialize cameras
         self.caps=[]
@@ -91,9 +94,77 @@ class ARTracker:
                 else:
                     self.caps.append(cam)
                     break
+    
+    # Used to draw information around arUco tags
+    def __drawBorderAndLabel(self, image, myIDs):
+
+        tag1corners = []
+        tag2corners = []
+        # loop over the detected ArUCo corners
+        for (markerCorner, markerID) in zip(self.corners, self.markerIDs):
+            if markerID in myIDs:
+                corners = markerCorner.reshape((4, 2))
+                (topLeft, topRight, bottomRight, bottomLeft) = corners
+
+                # convert each of the (x, y)-coordinate pairs to integers
+                topRight = (int(topRight[0]), int(topRight[1]))
+                bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+                bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+                topLeft = (int(topLeft[0]), int(topLeft[1]))
+
+                # If we are tracking two tags, store the corners of each tag
+                if len(myIDs) == 2:
+                    if markerID == myIDs[0]:
+                        tag1corners = corners
+                    if markerID == myIDs[1]:
+                        tag2corners = corners
+
+                # draw a bounding box around the ArUCo marker
+                cv2.line(image, topLeft, topRight, (0, 255, 0), 2)
+                cv2.line(image, topRight, bottomRight, (0, 255, 0), 2)
+                cv2.line(image, bottomRight, bottomLeft, (0, 255, 0), 2)
+                cv2.line(image, bottomLeft, topLeft, (0, 255, 0), 2)
+
+                # compute and draw the center (x, y)-coordinates of the ArUco marker
+                cX = int((topLeft[0] + bottomRight[0]) / 2.0)
+                cY = int((topLeft[1] + bottomRight[1]) / 2.0)
+                cv2.circle(image, (cX, cY), 4, (0, 255, 0), -1)
+
+                # draw the ArUco marker ID on the image
+                cv2.putText(image, str(markerID),
+                    (topLeft[0], topLeft[1] - 15), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 2)
+            
+            # Draw line and center between two tags if marking gatepost
+            if len(myIDs) is 2 and len(tag1corners) > 0 and len(tag2corners) > 0:
+
+                # Compute centers of two tags
+                tag1cX = int((tag1corners[0][0] + tag1corners[2][0]) / 2.0)
+                tag1cY = int((tag1corners[0][1] + tag1corners[2][1]) / 2.0)
+                tag2cX = int((tag2corners[0][0] + tag2corners[2][0]) / 2.0)
+                tag2cY = int((tag2corners[0][1] + tag2corners[2][1]) / 2.0)
+
+                # Compute center between two tags
+                midX = int((tag1cX + tag2cX) / 2.0)
+                midY = int((tag1cY + tag2cY) / 2.0)
+
+                # Draw line and center between two tags
+                cv2.line(image, (tag1cX, tag1cY), (tag2cX, tag2cY), (0, 255, 0), 2)
+                cv2.circle(image, (midX, midY), 7, (255, 0, 0), -1)
+            
+            # Draw distance and angle in top left corner
+            distance = round(self.distanceToMarker, 5)
+            angle = round(self.angleToMarker, 3)
+            cv2.rectangle(image, (0, 0), (400, 120), 0, -1)
+            strDistance = "Distance: " + str(distance)
+            cv2.putText(image, strDistance, (30,40), cv2.FONT_HERSHEY_SIMPLEX,
+                        1, (0,255,0), 1, cv2.LINE_AA)
+            strAngle = "Angle to: " + str(angle)
+            cv2.putText(image, strAngle, (30,80), cv2.FONT_HERSHEY_SIMPLEX,
+                        1, (0,255,0), 1, cv2.LINE_AA)
 
 
-    #helper method to convert YOLO detections into the aruco corners format
+    # Helper method to convert YOLO detections into the aruco corners format
     def _convertToCorners(self,detections, numCorners):
         corners = []
         xCoef = self.frameWidth / self.networkWidth
@@ -121,45 +192,53 @@ class ARTracker:
         
         return corners
     
-    #id1 is the main ar tag to track, id2 is if you're looking at a gatepost, image is the image to analyze
-    def markerFound(self, id1, image, id2=-1):
+    # Given a marker ID, returns true if the marker is found in the image
+    # If ID2 is given, returns true if both markers are found in the image
+    def markerFound(self, id1, image, id2=-1) -> bool:
+        
         # converts to grayscale
         cv2.cvtColor(image, cv2.COLOR_RGB2GRAY, image)  
-        
+        bw = image #will hold the black and white image
+    
         self.index1 = -1
         self.index2 = -1
-        bw = image #will hold the black and white image
-        # tries converting to b&w using different different cutoffs to find the perfect one for the current lighting
+        # Loop through the image, adjusting the threshold (black and white intesity) until the marker is found
         for i in range(40, 221, 60):
+
+            # Change the threshold and find the markers
             bw = cv2.threshold(image,i,255, cv2.THRESH_BINARY)[1]
             (self.corners, self.markerIDs, self.rejected) = aruco.detectMarkers(bw, self.markerDict)   
             if not (self.markerIDs is None):
                 print('', end='') #I have not been able to reproduce an error when I have a print statement here so I'm leaving it in    
-                if id2==-1: #single post
+                
+                if id2==-1: # If only one marker is being searched for
+
+                    # Find the index of the marker, specified by id1
                     self.index1 = -1 
-                    # this just checks to make sure that it found the right marker
                     for m in range(len(self.markerIDs)):  
                         if self.markerIDs[m] == id1:
                             self.index1 = m  
                             break  
-                
+                    
+                    # If the marker was found, print so and return true
                     if self.index1 != -1:
                         print("Found the correct marker!")
                         if self.write:
-                            self.videoWriter.write(bw)   #purely for debug   
+                            self.__drawBorderAndLabel(bw, [id1])
+                            self.videoWriter.write(bw)
+                            cv2.imshow('window', bw)
                             cv2.waitKey(1)
                         break                    
-                    
                     else:
                         print("Found a marker but was not the correct one") 
                 
-                else: #gate post
+                else: #If two markers are being searched for
                     self.index1 = -1
                     self.index2 = -1
                     if len(self.markerIDs) == 1: 
                        print('Only found marker ', self.markerIDs[0])
                     else:
-                        for j in range(len(self.markerIDs) - 1, -1,-1): #I trust the biggest markers the most
+                        for j in range(len(self.markerIDs) - 1, -1,-1): # Trust the biggest markers first
                             if self.markerIDs[j][0] == id1:
                                 self.index1 = j 
                             elif self.markerIDs[j][0] == id2:
@@ -167,44 +246,45 @@ class ARTracker:
                     if self.index1 != -1 and self.index2 != -1:
                         print('Found both markers!')
                         if self.write:
-                            self.videoWriter.write(bw)   #purely for debug   
+                            self.__drawBorderAndLabel(bw, [id1, id2])
+                            self.videoWriter.write(bw)
+                            cv2.imshow('window', bw)
                             cv2.waitKey(1)
                         break                        
                      
-            if i == 220:  #did not find any AR markers with any b&w cutoff using aruco                
-                #Checks to see if yolo can find a tag
+            if i == 220:  # Did not find any AR markers with any b&w cutoff using aruco                
+                # Check to see if YOLO can find the markers
                 if self.useYOLO:
                     detections = []
                     if not self.write:
-                        #this is a simpler detection function that doesn't return the image
+                        # A simpler detection function that doesn't return the image
                         detections = simple_detection(image, self.network, self.class_names, self.thresh)
                     else:
-                        #more complex detection that returns the image to be written
+                        # A more complex detection that returns the image to be written
                         image, detections = complex_detection(image, self.network, self.class_names, self.class_colors, self.thresh)
-                    #cv2.imwrite('ar.jpg', image)
                     for d in detections:
                         print(d)
                         
                     if id2 == -1 and len(detections) > 0:
                         self.corners = self._convertToCorners(detections, 1)
-                        self.index1 = 0 #Takes the highest confidence ar tag
+                        self.index1 = 0 # Takes the highest confidence ar tag
                         if self.write:
                             self.videoWriter.write(image)   #purely for debug   
                             cv2.waitKey(1)                        
                     elif len(detections) > 1:
                         self.corners = self._convertToCorners(detections, 2)
-                        self.index1 = 0 #takes the two highest confidence ar tags
+                        self.index1 = 0  # Takes the two highest confidence ar tags
                         self.index2 = 1
                         if self.write:
-                            self.videoWriter.write(image)   #purely for debug   
+                            self.videoWriter.write(image)  
                             cv2.waitKey(1)
                     print(self.corners)    
                 
-                #Not even YOLO saw anything
+                # YOLO saw nothing, so return false
                 if self.index1 == -1 or (self.index2 == -1 and id2 != -1): 
                     if self.write:
                         self.videoWriter.write(image) 
-                        #cv2.imshow('window', image)
+                        cv2.imshow('window', image)
                         cv2.waitKey(1)
                     self.distanceToMarker = -1 
                     self.angleToMarker = -999 
@@ -217,7 +297,8 @@ class ARTracker:
             self.angleToMarker = self.degreesPerPixel * (centerXMarker - self.frameWidth/2)
         
             '''
-            distanceToAR = (knownWidthOfMarker(20cm) * focalLengthOfCamera) / pixelWidthOfMarker
+            di
+             \ focalLengthOfCamera) / pixelWidthOfMarker
             focalLength = focal length at 0 degrees horizontal and 0 degrees vertical
             focalLength30H = focal length at 30 degreees horizontal and 0 degrees vertical
             focalLength30V = focal length at 30 degrees vertical and 0 degrees horizontal
@@ -284,3 +365,4 @@ class ARTracker:
                 return True
 
         return False
+    
