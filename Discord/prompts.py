@@ -11,11 +11,12 @@ Adding to bot:
 config = configparser.ConfigParser()
 config.read('./config.ini')
 
-GIF_KEY = "YOUR_GIPHY_API_KEY"
+GIF_KEY = str(config['API_KEY']['GIF_KEY'])
 NASA_KEY = str(config['API_KEY']['NASA_KEY'])
 
 github = 'https://github.com/Sooner-Rover-Team/SoonerRoverTeamV'
 googleDrive = 'https://drive.google.com/drive/u/0/folders/0B6oziDhC71QDbzNELW1INmVkNHc?resourcekey=0-PflQo5ozmvI3AKt8fErFkw'
+googleCalendar = 'https://calendar.google.com/calendar/u/0/r/week?pli=1'
 
 # Add to this function to create more prompts/responses for the bot
 def handle_response(message) -> str:
@@ -27,6 +28,7 @@ def handle_response(message) -> str:
         **!roll** - rolls a 6 sided dice. Use '!roll x' to roll an x sided die
         **!github** - posts the link to the SORO Github repo
         **!drive** - posts the link to the SORO Google Drive
+        **!discord** - posts the link to the SORO Google Calendar 
         **!quote** - be inspired by a random quote
         **!nasa** - get NASA Astronomy's pic of the day!
         **!mars** - get a random photo from curiosty's latest mission on mars!
@@ -49,6 +51,9 @@ def handle_response(message) -> str:
     
     if p_message == 'drive':
         return f"Here's the link to the SORO Google Drive: {googleDrive}"
+    
+    if p_message == 'calendar':
+        return f"Here's the link to the SORO Google Calendar: {googleCalendar}"
     
     if p_message == 'quote':
         query = "https://api.quotable.io/random" 
@@ -91,6 +96,8 @@ def handle_response(message) -> str:
                 random_photo = random.choice(photos)
                 return random_photo["img_src"]
         return None
+
+
 
 # @bot.command()
 # async def github(ctx):
