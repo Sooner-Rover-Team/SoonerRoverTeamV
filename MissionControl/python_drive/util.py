@@ -2,23 +2,31 @@ from math import hypot, sqrt, cos, sin, atan, atan2, acos, pi, dist
 from turtle import distance
 import pygame
 from pygame import gfxdraw
+import os
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
+
+current_folder = os.path.dirname(__file__)
+os.chdir(current_folder)
+
 pygame.display.init() # Initialize display module
 pygame.display.set_mode((1200,600)) # width/ height of window in pixels
 initialize = True
 
-baseImage = pygame.image.load("backgroundPics\\RotatingBase.png")
-bicepImage = pygame.image.load("backgroundPics\\ProximalMemberandActuators.png")
+
+
+baseImage = pygame.image.load("backgroundPics/RotatingBase.png")
+bicepImage = pygame.image.load("backgroundPics/ProximalMemberandActuators.png")
 bicepImage = pygame.transform.rotate(bicepImage, -90)
 
-forearmImage = pygame.image.load("backgroundPics\\DistalMember.png")
-wristAndClawImage = pygame.image.load("backgroundPics\\WristAndClaw.png")
-armBackground = pygame.image.load("backgroundPics\\armBackground.png")
+forearmImage = pygame.image.load("backgroundPics/DistalMember.png")
+wristAndClawImage = pygame.image.load("backgroundPics/WristandClaw.png")
+armBackground = pygame.image.load("backgroundPics/armBackground.png")
 
 bicepLength = 30 # in inches
 forearmLength = 30 
@@ -40,7 +48,7 @@ oldY = 9.5
 
 oldIK = False
 
-armBoundaries = pygame.image.load("backgroundPics\\armBoundaries.png")
+armBoundaries = pygame.image.load("backgroundPics/armBoundaries.png")
 
 
 # this function will remap a value from one range to another. ex: map(5, 0, 10, 0, 100) will return 50
