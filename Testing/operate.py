@@ -34,7 +34,7 @@ if os.path.dirname(__file__) != '':
     current_folder = os.path.dirname(__file__)
     os.chdir(current_folder)
 config = configparser.ConfigParser()
-config.read('.\config.ini')
+config.read('./config.ini')
 USING_BRIDGE = config.getboolean('Connection', 'USING_BRIDGE')
 BRIDGE_HOST = config['Connection']['BRIDGE_HOST']
 EBOX_HOST = config['Connection']['EBOX_HOST']
