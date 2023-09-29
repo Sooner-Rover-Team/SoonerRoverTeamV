@@ -2,7 +2,7 @@ import os
 import pygame
 import socket
 import configparser
-import util
+import utilWireless
 from pygame.time import Clock
 
 # pygame and joystick setup
@@ -14,7 +14,7 @@ if pygame.joystick.get_count() == 0:
 joystick = pygame.joystick.Joystick(0)
 print('Joystick Found:', joystick.get_name())
 timer = Clock()
-tp = util.TextPrint(40)
+tp = utilWireless.TextPrint(40)
 
 # GUI stuff
 wheelImage = pygame.image.load("backgroundPics\wheelBackground.png")
@@ -177,7 +177,7 @@ def updateArm():
         temp_u -= -L_X * movement_factor
 
     # inverse kinematics calculates new GUI points based on new temp_u/temp_v modified by the controller
-    shoulder_length, elbow_length, temp_u, temp_v = util.arm_calc(CONFIGURATION, temp_u, temp_v)
+    shoulder_length, elbow_length, temp_u, temp_v = utilWireless.arm_calc(CONFIGURATION, temp_u, temp_v)
     # shoulder/elbow length are distance that actuator should extend (between 0 and 180 for servo PWM)
 
     # coords for GUI
@@ -226,7 +226,7 @@ def updateScience():
 
 # Converts the axis position to a usable wheel speed
 def getWheelSpeed(axispos):
-    return util.nearestInteger((-axispos * 126) + 126)
+    return utilWireless.nearestInteger((-axispos * 126) + 126)
 
 # Converts the left and right wheel speeds into an array of bytes so it can be sent to REMI
 def getWheelMessage(leftwheels, rightwheels):
@@ -332,10 +332,10 @@ while running:
     tp.print(screen, "Mode: ", BLACK)
     if mode == "drive":
         tp.print(screen, "Drive", RED)
-        util.draw_drive_stuff(screen, leftwheels, rightwheels)
+        utilWireless.draw_drive_stuff(screen, leftwheels, rightwheels)
     elif arm_installed:
         tp.print(screen, "Arm", RED)
-        util.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y)
+        utilWireless.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y)
     else:
         tp.print(screen, "Science", RED)
         #util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp,)
