@@ -1,4 +1,5 @@
 import os
+import select
 import pygame
 import socket
 import configparser
@@ -78,6 +79,7 @@ THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 
 lastArmMsg = [0, 0, 0, 0, 0, 0]
+encodermsg = [0]
 claw_closed = False
 coord_u = 18.5  # wrist position
 coord_v = 9.5
@@ -93,6 +95,11 @@ wrist_rotation = 0
 wrist_angle = 0
 claw_dir = 0
 
+# Wheel variables
+halt = True
+stopsent = False
+sportmode = False
+
 # a remote socket where the IP/port are the ones on the microcontroller        !!have Jack explain!!
 ebox_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 if USING_BRIDGE:
@@ -101,7 +108,12 @@ else:
     ebox_socket.connect((EBOX_HOST, EBOX_PORT))
 
 # Read axis values from joysticks and send to REMI
-def updateWheels(halt, stopsent):
+def updateWheels():
+    global halt
+    global stopsent
+    global leftwheels
+    global rightwheels
+
     L_Y = joystick.get_axis(L_Y_AXIS)
     R_Y = joystick.get_axis(R_Y_AXIS)
 
@@ -136,7 +148,7 @@ def updateWheels(halt, stopsent):
         ebox_socket.sendall(data)
         stopsent = True
 
-    return halt, stopsent, leftwheels, rightwheels
+    return
 
 
 # Checks each element in the wheel message and returns true if all messages are 126 (stop)
@@ -153,12 +165,25 @@ def isStopped(leftwheels,rightwheels):
 def updateArm():
     global coord_u
     global coord_v
+    global encodermsg
+
     L_Y = joystick.get_axis(L_Y_AXIS)
     L_X = joystick.get_axis(L_X_AXIS)
     R_Y = joystick.get_axis(R_Y_AXIS)
     R_X = joystick.get_axis(R_X_AXIS)
     L_T = joystick.get_axis(L_T_AXIS)
     R_T = joystick.get_axis(R_T_AXIS)
+
+    ready_to_read, ready_to_write, exceptional_conditions = select.select([ebox_socket], [], [], 0)  # Number = timeout, 0 -> "nonblocking"
+
+    if ebox_socket in ready_to_read:
+        try:
+            encodermsg = ebox_socket.recv(1024)
+            print(encodermsg)
+
+        except socket.timeout:
+            print("Socket timeout")
+
     # movement factor is some rate that the position values change
     movement_factor = 0.2 / (20 / 10) # FPS = 20
      # temporarly save coords to do inverse kinematics on the moved point
@@ -256,9 +281,6 @@ def stopWheels():
 
 mode = 'arm'
 arm_installed = True
-halt = True
-sportmode = False
-stopsent = False
 running = True
 print('\n!!Remi is set to arm operation by default, press START to switch to drive mode or SELECT to switch to science package operation!!\n')
 
@@ -308,17 +330,17 @@ while running:
                 sportmode = True
                 print('\nSPORT MODE ACTIVATED')
     if mode == 'drive':
-        halt, stopsent, leftwheels, rightwheels = updateWheels(halt, stopsent)
+        updateWheels()
         halt = False
     elif mode == 'arm' and arm_installed:
         halt = True
         updateArm()
+        claw_x = coord_u
+        claw_y = -coord_v
     elif mode == 'science':
         halt = True
         updateScience()
     
-    claw_x = coord_u
-    claw_y = -coord_v
     tp.reset()
 
     if mode == "drive":
@@ -335,7 +357,7 @@ while running:
         util.draw_drive_stuff(screen, leftwheels, rightwheels)
     elif arm_installed:
         tp.print(screen, "Arm", RED)
-        util.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y)
+        util.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y, encodermsg, tp)
     else:
         tp.print(screen, "Science", RED)
         #util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp,)
