@@ -83,6 +83,8 @@ encodermsg = [0]
 claw_closed = False
 coord_u = 18.5  # wrist position
 coord_v = 9.5
+claw_x = 0.0
+claw_y = 0.0
 phi = 0.0  # wrist angle
 theta = 0.0
 poke = False
@@ -166,6 +168,8 @@ def updateArm():
     global coord_u
     global coord_v
     global encodermsg
+    global claw_x
+    global claw_y
 
     L_Y = joystick.get_axis(L_Y_AXIS)
     L_X = joystick.get_axis(L_X_AXIS)
@@ -245,6 +249,9 @@ def updateArm():
         ebox_socket.sendall(data)
     else:
         numSameMessages += 1
+
+    claw_x = coord_u
+    claw_y = -coord_v
 
 def updateScience():
     return 0
@@ -335,8 +342,6 @@ while running:
     elif mode == 'arm' and arm_installed:
         halt = True
         updateArm()
-        claw_x = coord_u
-        claw_y = -coord_v
     elif mode == 'science':
         halt = True
         updateScience()
