@@ -1,5 +1,5 @@
 /*
- * The upperArm controls the pitch/yaw motor, the 360 wrist motor, and the claw motor. It receives CAN
+ * The upperArm controls the pitch/yaw motor, the 360 wrist motor, and the claw motor. It receives CAN 
  *  msgs and then updates the three motors accordingly. Both motors will have encoders for PID.
  *  When a motor is moved and then stopped, PID is used to make sure the motor stays at that position regardless of load.
  *  
@@ -89,7 +89,7 @@ void setup () {
       digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
     }
   }
- 
+  
   // set up servo objects for PWM generation and digital signals (0 or 1)
   pitch.attach(pitch_PIN, 1000, 2000); //PWM pulse high time min/max = 900us-2100us
   wristRotate.attach(WRISTROTATE_PIN, 1000, 2000);
@@ -159,8 +159,8 @@ void loop () {
       Serial.println(USDSdistance);
     }
     USDSdistanceRepeat = USDSdistance;
-   
-    if (wristPitch != wristPitchRepeat) {
+    
+    if (wristPitch != wristPitchRepeat) { 
       // Only displays the wristPitch if it changes
       Serial.print("Encoder value: ");
       Serial.println(wristPitch);
@@ -168,30 +168,23 @@ void loop () {
     wristPitchRepeat = wristPitch;
 
   #endif
+
+  sendWristInfo(wristPitch, USDSdistance);
+
   delay(10);
 }
 
-void sendWristPitchCAN(int encoderValue) {
-  // Sends the wristPitch as a CAN message to the EBOX Teensy. encoderValue is used since it is only a locally defined variable.
+void sendWristInfo(int encoderValue, float distanceValue) {
+  // Sends the wristPitch and USDSdistance as a CAN message to the EBOX Teensy.
+  // encoderValue and distanceValue are used since to avoid name overlap with globally defined variables
   sendMessage.id = EBOX; // To EBOX (hex value)
-  sendMessage.len = 1; // Indicates one value is being sent
-  sendMessage.data[0] = encoderValue; // Sets the message to be sent as the encoderValue
+  sendMessage.len = 2; // Indicates two values are being sent
+  sendMessage.data[0] = encoderValue; // Sets the first value encoderValue
+  sendMessage.data[1] = distanceValue; // Sets the second value to USDSdistance
 
-  bool ok = ACAN_T4::can3.tryToSend (sendMessage);
+  bool ok = ACAN_T4::can3.tryToSend(sendMessage);
   if(ok && DEBUG) {
-    Serial.print("wristPitchCAN sent.");
-  }
-}
-
-void sendUSDSCAN(float USDSdistance) {
-  // sends the USDSdistance as a CAN message to the Ebox Teensy.
-  sendMessage.id = EBOX;
-  sendMessage.len = 1;
-  sendMessage.data[0] = USDSdistance; // I have no idea what the fuck this array number means, I'm like 99% certain it needs to be 0 but please for the love of christ check if it has to be 4 and the other one 3.
-
-  bool ok = ACAN_T4::can3.tryToSend (sendMessage);
-  if(ok && DEBUG) {
-    Serial.print("USDSCAN sent.");
+    Serial.print("Wrist info sent.");
   }
 }
 /***** PID WILL NEED TO BE TESTED AFTER SAR *****/
