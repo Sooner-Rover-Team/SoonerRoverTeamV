@@ -479,7 +479,7 @@ void loop() {
 
     if(ACAN_T4::can3.receive(recMessage)) {
       if(recMessage.id == 0x04) {
-        if(recMessage.len == 1) {
+        if(recMessage.len == 2) {
           sendEncoder(recMessage);
         }
       }

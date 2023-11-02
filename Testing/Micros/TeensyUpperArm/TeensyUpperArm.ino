@@ -28,7 +28,7 @@
 #define WRIST_PITCH_PIN2 8
 #define EBOX 0x04 // Unused CAN to send to the E-box
 
-UltraSonicDistanceSensor distanceSensor(9,10); // Pins 9 & 10 for the USDS
+//UltraSonicDistanceSensor distanceSensor(9,10); // Pins 9 & 10 for the USDS
 
 //-----------------------------------------------------------------
 
@@ -149,7 +149,7 @@ void loop () {
     }
   }
 
-  USDSdistance = distanceSensor.measureDistanceCm();
+  USDSdistance = 0; //distanceSensor.measureDistanceCm();
   wristPitch = upperMotor.read();
 
   #if DEBUG
