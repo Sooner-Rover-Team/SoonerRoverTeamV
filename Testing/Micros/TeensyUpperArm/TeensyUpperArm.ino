@@ -106,6 +106,20 @@ void setup () {
   pinMode (8, INPUT);
 }
 
+void sendWristInfo(int encoderValue, float distanceValue) {
+  // Sends the wristPitch and USDSdistance as a CAN message to the EBOX Teensy.
+  // encoderValue and distanceValue are used since to avoid name overlap with globally defined variables
+  sendMessage.id = EBOX; // To EBOX (hex value)
+  sendMessage.len = 2; // Indicates two values are being sent
+  sendMessage.data[0] = encoderValue; // Sets the first value encoderValue
+  sendMessage.data[1] = distanceValue; // Sets the second value to USDSdistance
+
+  bool ok = ACAN_T4::can3.tryToSend(sendMessage);
+  if(ok && DEBUG) {
+    Serial.print("Wrist info sent.");
+  }
+}
+
 void updateMotors(CANMessage message) { // recieves a message and controls the motors
     // update variables so PID can use this data too
   pitchMovement = message.data[0];
@@ -174,19 +188,6 @@ void loop () {
   delay(10);
 }
 
-void sendWristInfo(int encoderValue, float distanceValue) {
-  // Sends the wristPitch and USDSdistance as a CAN message to the EBOX Teensy.
-  // encoderValue and distanceValue are used since to avoid name overlap with globally defined variables
-  sendMessage.id = EBOX; // To EBOX (hex value)
-  sendMessage.len = 2; // Indicates two values are being sent
-  sendMessage.data[0] = encoderValue; // Sets the first value encoderValue
-  sendMessage.data[1] = distanceValue; // Sets the second value to USDSdistance
-
-  bool ok = ACAN_T4::can3.tryToSend(sendMessage);
-  if(ok && DEBUG) {
-    Serial.print("Wrist info sent.");
-  }
-}
 /***** PID WILL NEED TO BE TESTED AFTER SAR *****/
 
    //monitor motor position after writing using PID.
