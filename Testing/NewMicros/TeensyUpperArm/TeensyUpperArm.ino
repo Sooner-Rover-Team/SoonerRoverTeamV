@@ -187,8 +187,6 @@ void loop () {
   #endif
 
   sendWristInfo(wristPitch, USDSdistance);
-
-  delay(10);
 }
 
 /***** PID WILL NEED TO BE TESTED AFTER SAR *****/
