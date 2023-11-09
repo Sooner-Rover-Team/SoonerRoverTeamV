@@ -169,7 +169,10 @@ def updateArm():
     global coord_u
     global coord_v
     global encodermsg
+<<<<<<< HEAD
     global encoderprint
+=======
+>>>>>>> 78198b2b4e522df65e1cb77d0d01656550edec37
     global claw_x
     global claw_y
 
