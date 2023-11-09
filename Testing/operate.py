@@ -79,10 +79,13 @@ THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 
 lastArmMsg = [0, 0, 0, 0, 0, 0]
-encodermsg = [0]
+encodermsg = [0, 0]
+encoderprint = 0
 claw_closed = False
 coord_u = 18.5  # wrist position
 coord_v = 9.5
+claw_x = 0.0
+claw_y = 0.0
 phi = 0.0  # wrist angle
 theta = 0.0
 poke = False
@@ -166,6 +169,9 @@ def updateArm():
     global coord_u
     global coord_v
     global encodermsg
+    global encoderprint
+    global claw_x
+    global claw_y
 
     L_Y = joystick.get_axis(L_Y_AXIS)
     L_X = joystick.get_axis(L_X_AXIS)
@@ -179,7 +185,8 @@ def updateArm():
     if ebox_socket in ready_to_read:
         try:
             encodermsg = ebox_socket.recv(1024)
-            print(encodermsg)
+            encoderprint = encodermsg[1] * 255 + encodermsg[0]
+            print(encodermsg[1] * 255 + encodermsg[0])
 
         except socket.timeout:
             print("Socket timeout")
@@ -245,6 +252,9 @@ def updateArm():
         ebox_socket.sendall(data)
     else:
         numSameMessages += 1
+
+    claw_x = coord_u
+    claw_y = -coord_v
 
 def updateScience():
     return 0
@@ -335,8 +345,6 @@ while running:
     elif mode == 'arm' and arm_installed:
         halt = True
         updateArm()
-        claw_x = coord_u
-        claw_y = -coord_v
     elif mode == 'science':
         halt = True
         updateScience()
@@ -357,7 +365,7 @@ while running:
         util.draw_drive_stuff(screen, leftwheels, rightwheels)
     elif arm_installed:
         tp.print(screen, "Arm", RED)
-        util.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y, encodermsg, tp)
+        util.draw_arm_stuff(screen, CONFIGURATION, claw_x, claw_y, encoderprint, tp)
     else:
         tp.print(screen, "Science", RED)
         #util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp,)

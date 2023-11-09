@@ -186,7 +186,7 @@ def arm_calc(alt_arm_config, temp_u, temp_v):
     return b, f, temp_u, temp_v # new implementation
 
 """ draw all the arm garbage on screen """
-def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y, encodermsg, tp):
+def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y, encoderprint, tp):
     global initialize
     global bicepImage
     global bicepAngle
@@ -261,7 +261,7 @@ def draw_arm_stuff(screen, alt_arm_config, claw_x, claw_y, encodermsg, tp):
     # add arm pictures to GUI
     screen.blits(((baseImage, (origin_x-75, origin_y-20)), (moddedbicepImage, bicepRect), (moddedforearmImage, forearmRect), (moddedWristAndClawImage, wristAndClawRect)))
 
-    tp.printat(screen, 'ENCODERMESSAGE: ' + str(encodermsg[0]), BLACK, (900, 300))
+    tp.printat(screen, 'ENCODERMESSAGE: ' + str(encoderprint), BLACK, (900, 300))
 
 def rot_center(image, angle, x, y):
     rotated_image = pygame.transform.rotate(image, angle)
