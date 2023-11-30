@@ -79,7 +79,6 @@ int checkSum = 0; // used to check for errors in recieved message.
 
 int vertPos = 90; // position of gimbal
 int horizPos = 90; 
-int lastEncoderVal = 0;
 
 Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
 Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
@@ -211,12 +210,6 @@ double clip(double value, double low, double high) {
 }
 
 void sendEncoder(CANMessage encodermsg) {
-  int msg1 = encodermsg.data[1] * 255;
-  int msg2 = encodermsg.data[0];
-  if (msg1 + msg2 == lastEncoderVal || abs(msg1 + msg2 - lastEncoderVal) < 20) {
-    return;
-  }
-  lastEncoderVal = msg1 + msg2;
   Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
   byte encoder[2];
   encoder[0] = encodermsg.data[0];
@@ -444,13 +437,6 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
 }
 
 void loop() {
-  if(ACAN_T4::can3.receive(recMessage)) {
-      if(recMessage.id == 0x04) {
-        if(recMessage.len == 2) {
-          sendEncoder(recMessage);
-        }
-      }
-  }
   // if there's data available, read a packet
   int packetSize = Udp.parsePacket();
   if (packetSize) {
@@ -492,6 +478,14 @@ void loop() {
       }
       Serial.println();
     #endif
+
+    if(ACAN_T4::can3.receive(recMessage)) {
+      if(recMessage.id == 0x04) {
+        if(recMessage.len == 2) {
+          sendEncoder(recMessage);
+        }
+      }
+    }
 
     if(packetBuffer[0] == WHEEL) { // means the UDP message was for the wheel system
       updateWheels(packetBuffer, packetSize);

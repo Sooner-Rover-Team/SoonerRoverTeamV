@@ -24,7 +24,7 @@
 #define WRISTROTATE_PIN 4
 #define CLAW_CLOSE_PIN 5 // not working
 #define CLAW_OPEN_PIN 6
-#define DEBUG 0 // 0 to run with no debugs, 1 to run with debugs
+#define DEBUG 1 // 0 to run with no debugs, 1 to run with debugs
 #define WRIST_PITCH_PIN1 7 // Used to read the wrists pitch.
 #define WRIST_PITCH_PIN2 8
 #define EBOX 0x04 // Unused CAN to send to the E-box
