@@ -186,7 +186,7 @@ def updateArm():
         try:
             encodermsg = ebox_socket.recv(1024)
             encoderprint = encodermsg[1] * 255 + encodermsg[0]
-            print(encodermsg[1] * 255 + encodermsg[0])
+            print(encoderprint)
 
         except socket.timeout:
             print("Socket timeout")
