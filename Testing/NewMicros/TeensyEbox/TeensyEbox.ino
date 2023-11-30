@@ -48,7 +48,6 @@ byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168,1,101);
 
 unsigned int localPort = 1001; // local port to listen on
-unsigned int sendPort = 50007;
 
 // buffers for receiving and sending data
 unsigned char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  // buffer to hold incoming packet,
@@ -211,13 +210,12 @@ double clip(double value, double low, double high) {
 }
 
 void sendEncoder(CANMessage encodermsg) {
-  Udp.beginPacket(Udp.remoteIP(), sendPort);
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
   byte encoder[2];
   encoder[0] = encodermsg.data[0];
   encoder[1] = encodermsg.data[1];
   Udp.write(encoder, 2);
   Udp.endPacket();
-  //Serial.println(encoder[1] * 255 + encoder[0]);
   return;
 }
 
@@ -440,14 +438,6 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
 
 void loop() {
   // if there's data available, read a packet
-  if(ACAN_T4::can3.receive(recMessage)) {
-      if(recMessage.id == 0x04) {
-        if(recMessage.len == 2) {
-          sendEncoder(recMessage);
-        }
-      }
-  }
-
   int packetSize = Udp.parsePacket();
   if (packetSize) {
     digitalWrite(CAN_LED, HIGH);
@@ -488,6 +478,14 @@ void loop() {
       }
       Serial.println();
     #endif
+
+    if(ACAN_T4::can3.receive(recMessage)) {
+      if(recMessage.id == 0x04) {
+        if(recMessage.len == 2) {
+          sendEncoder(recMessage);
+        }
+      }
+    }
 
     if(packetBuffer[0] == WHEEL) { // means the UDP message was for the wheel system
       updateWheels(packetBuffer, packetSize);

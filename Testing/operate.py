@@ -79,6 +79,7 @@ THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
 
 lastArmMsg = [0, 0, 0, 0, 0, 0]
+encodermsg = [0, 0]
 encoderprint = 0
 claw_closed = False
 coord_u = 18.5  # wrist position
@@ -167,6 +168,7 @@ def isStopped(leftwheels,rightwheels):
 def updateArm():
     global coord_u
     global coord_v
+    global encodermsg
     global encoderprint
     global claw_x
     global claw_y
@@ -184,7 +186,7 @@ def updateArm():
         try:
             encodermsg = ebox_socket.recv(1024)
             encoderprint = encodermsg[1] * 255 + encodermsg[0]
-            print(encoderprint)
+            print(encodermsg[1] * 255 + encodermsg[0])
 
         except socket.timeout:
             print("Socket timeout")
