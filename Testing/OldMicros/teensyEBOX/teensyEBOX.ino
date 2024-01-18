@@ -8,10 +8,10 @@
      [],pin  front   [],pin
      0,6     0-|-0    3,3
                |
-     1,7     0-|-0   -4,4
+     1,7     0-|-0    4,4
                |
-    -2,8     0-|-0   -5,5
-     "-" indicaes wheel's polarity needs to be reversed
+     2,8     0-|-0    5,5
+     CURRENT WIRING HAS ALL WHEELS REVERSED EXCEPT WHEEL 2
 
      gimbal pan: 
      gimbal tilt: 
@@ -45,11 +45,7 @@
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-<<<<<<< HEAD
-IPAddress ip(192, 168,1,101);
-=======
 IPAddress ip(192, 168, 1, 101);
->>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
 
 unsigned int localPort = 1001; // local port to listen on
 
@@ -85,7 +81,7 @@ int horizPos = 90;
 Servo wheel0, wheel1, wheel2, wheel3, wheel4, wheel5, gimbalVert, gimbalHoriz;
 Servo wheels[6] = {wheel0, wheel1, wheel2, wheel3, wheel4, wheel5};
 // if some connections are reversed, wheel0.write(0) may not be the same direction as wheel1.write(0)
-bool wheelReverse[6] = {false, false, false, true, false, true};
+bool wheelReverse[6] = {false, true, false, true, true, true};
 
 unsigned long timeOut = 0; // used to measure time between msgs. If we go a full second without new msgs, stop wheels so rover doesn't run away from us
 
@@ -113,17 +109,7 @@ void setup() {
     delay(100);
     Serial.println("Starting");
   #endif
-  // while (!Serial) {
-  //   delay (50);
-  //   digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)); // wait for serial port to connect. Needed for native USB port only
-  // }
-  // You can use Ethernet.init(pin) to configure the CS pin
-  //Ethernet.init(10);  // Most Arduino shields <---
-  //Ethernet.init(5);   // MKR ETH Shield
-  //Ethernet.init(0);   // Teensy 2.0
-  //Ethernet.init(20);  // Teensy++ 2.0
-  //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
-  //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
+
   wheel0.attach(6, 1000, 2000);
   wheel1.attach(7, 1000, 2000);
   wheel2.attach(8, 1000, 2000);
@@ -250,14 +236,6 @@ void updateGimbal(int vertical, int horizontal) {
 //WHEEL msg: [0x01, 0x01, w1, w2, w3, w4, w5, w6, checkSum]
 void updateWheels(unsigned char msg[], int msgSize) {
   checkSum = 0;
-  // #if DEBUG
-  //   //Serial.println("msg recieved:");
-  //   for(int i=0; i<msgSize; ++i) {
-  //     Serial.print(uint8_t(msg[i]));
-  //     Serial.print(", ");
-  //   }
-  //   Serial.println();
-  // #endif
 
   /**************LED MSG *****************/
   if (msg[1] == LED) {
@@ -295,36 +273,14 @@ void updateWheels(unsigned char msg[], int msgSize) {
         checkSum += msg[i];
       }
       checkSum = checkSum & 0xff;
-      // #if DEBUG // commented because its hard to read other print statements, keep in case its needed
-        // Serial.print("Calcuated checksum: ");
-        // Serial.println(checkSum);
-        // Serial.print("Received checksum: ");
-        // Serial.println((int)msg[8]);
-      // #endif
+
       if(checkSum == uint8_t(msg[8])) {
-        timeOut = millis(); // save time so we know how long it's been between this and next msg
-        // set the appropriate target speeds
+        timeOut = millis(); // save time so we know how long it's been between this and next msg for wheel stop
+        // set the appropriate target speeds for PID calculation
         for (int i = 0; i < 6; i++) {
           targetSpeeds[i] = (uint8_t)msg[i+2];
         }
-<<<<<<< HEAD
-        // wheel0.write((int)map(targetSpeeds[0], 0, 252, 0, 180));
-        // wheel1.write((int)map(targetSpeeds[1], 0, 252, 0, 180));
-        // wheel2.write((int)map(targetSpeeds[2], 0, 252, 0, 180));
-        // wheel3.write((int)map(targetSpeeds[3], 252, 0, 0, 180));
-        // wheel4.write((int)map(targetSpeeds[4], 0, 252, 0, 180));
-        // wheel5.write((int)map(targetSpeeds[5], 252, 0, 0, 180));         
-=======
-        for (int i = 0; i < 6; i++) {
-          if (wheelReverse[i]) {
-            wheels[i].write((int)map(targetSpeeds[i], 252, 0, 0, 180)); 
-          // Serial.print((int)map(currentSpeeds[i], 252, 0, 0, 180));
-          // Serial.print(", ");       
-          } else {
-            wheels[i].write((int)map(targetSpeeds[i], 0, 252, 0, 180));
-        }
-    }          
->>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
+        
         //updateGimbal(uint8_t(msg[8]), uint8_t(msg[9])); // NOT IMPLEMENTED RIGHT NOW
       }
       else {
@@ -357,7 +313,6 @@ void sendArmCAN(unsigned char msg[], int msgSize) {
       message.id = LOWER_ARM; // ID for lower arm
       message.len = 3;
       memcpy(message.data, &msg[1], 3); // base, bicep, forearm
-     // printCanMsg(message);
       bool ok = ACAN_T4::can3.tryToSend (message) ;
       if(ok && DEBUG) {
         Serial.println("lower sent"); 
@@ -399,19 +354,12 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
       message.id = SCIENCE; // ID for lower arm
       message.len = 4;
       memcpy(message.data, &msg[1], 4); // actuator, carousel, fan, microscope
-<<<<<<< HEAD
-      bool ok = ACAN_T4::can3.tryToSend (message) ;
-      if(ok && DEBUG) {
-        Serial.print("Science sent");
-=======
-      // delay(3000);
       bool ok = ACAN_T4::can3.tryToSend(message) ;
 
       if(ok) {
         #if DEBUG
           Serial.print("Science sent, ");
         #endif   
->>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
       }
       else {
         #if DEBUG
@@ -427,11 +375,7 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
   }
   else {
     #if DEBUG
-<<<<<<< HEAD
-        Serial.println("checkSum for SCIENCE was incorrect... ignoring this message.");
-=======
       Serial.println("length for SCIENCE was incorrect... ignoring this message.");
->>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
     #endif
   }
 }
@@ -441,22 +385,6 @@ void loop() {
   int packetSize = Udp.parsePacket();
   if (packetSize) {
     digitalWrite(CAN_LED, HIGH);
-<<<<<<< HEAD
-    // #if DEBUG // useful for debugging UDP msgs
-      // Serial.print("Received packet of size ");
-      // Serial.println(packetSize);
-      // Serial.print("From ");
-      // IPAddress remote = Udp.remoteIP();
-      // for (int i=0; i < 4; i++) {
-      //   Serial.print(remote[i], DEC);
-      //   if (i < 3) {
-      //     Serial.print(".");
-      //   }
-      // }
-      // Serial.print(", port ");
-      // Serial.println(Udp.remotePort());
-    // #endif
-=======
     #if DEBUG
       Serial.print("Received packet of size ");
       Serial.println(packetSize);
@@ -471,7 +399,6 @@ void loop() {
       Serial.print(", port ");
       Serial.println(Udp.remotePort());
     #endif
->>>>>>> c20a0ca1b760f3cb561df39a1ad6e0a7dfaa96b1
     // read the packet into packetBuffer
     Udp.read(packetBuffer, packetSize);
     #if DEBUG
@@ -495,18 +422,12 @@ void loop() {
         Serial.println("ID unrecognized");
       #endif
     }
-    // send a reply to the IP address and port that sent us the packet we received (NEVER TRIED THIS)
-    //Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    //Udp.write(ReplyBuffer);
-    //Udp.endPacket();
     digitalWrite(CAN_LED, LOW);
   }
   if ( millis() - timeOut >= 1000) // if the last good msg recieved was longer than 1 sec ago, stop wheels
   {
     timeOut = millis();
     for (int i = 0; i < 6; i++) {
-      // wheels[i].write(90);
-      // delay(5);
       currentSpeeds[i] = 126;
       targetSpeeds[i] = 126;
     }
@@ -523,12 +444,15 @@ void loop() {
       Serial.println("Stopped motors");
     #endif
   } else {
+    /*
+     * PID Control - Currrently only uses proportional control to slowly ramp the wheels to target speeds.
+     *   Mission control data fills targetSpeeds and PID modifies currentSpeeds until the target is reached.
+    */
     deltaLoop = (millis() - lastLoop)/1000.0;
     lastLoop = millis();
     for (int i = 0; i < 6; i++) {
       // if using proportional control, look at the difference between the current and desired speed
       if (proportionalControl && abs(currentSpeeds[i] - 126) < (126*Kp_thresh)) {
-      // if (proportionalControl) {
         error[i] = targetSpeeds[i] - currentSpeeds[i];
         double output = error[i]*Kp*deltaLoop;
         currentSpeeds[i] += output;
@@ -540,15 +464,16 @@ void loop() {
       // also clip the current speed value just to be safe
       currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
     }
+    // END OF PID
+    
     // actually update wheel speeds
     wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
-    wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
+    wheel1.write((int)map(currentSpeeds[1], 252, 0, 0, 180));
     wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
     wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
-    wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
+    wheel4.write((int)map(currentSpeeds[4], 252, 0, 0, 180));
     wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
-    
-    // remember milli time of the last loop
+
   }
 }
 

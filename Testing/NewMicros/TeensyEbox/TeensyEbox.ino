@@ -60,7 +60,7 @@ EthernetUDP Udp;
 CANMessage message;
 CANMessage recMessage;
 
-#define DEBUG 0 // set to 0 to avoid compiling print statements (will save space, don't need to print if running on rover)
+#define DEBUG 1 // set to 0 to avoid compiling print statements (will save space, don't need to print if running on rover)
 
 #define WHEEL 0x01 // UDP IDs
 #define ARM 0x02
@@ -536,12 +536,15 @@ void loop() {
     #endif
     } 
     else {
+    /*
+     * PID Control - Currrently only uses proportional control to slowly ramp the wheels to target speeds.
+     *   Mission control data fills targetSpeeds and PID modifies currentSpeeds until the target is reached.
+    */
     deltaLoop = (millis() - lastLoop)/1000.0;
     lastLoop = millis();
     for (int i = 0; i < 6; i++) {
       // if using proportional control, look at the difference between the current and desired speed
       if (proportionalControl && abs(currentSpeeds[i] - 126) < (126*Kp_thresh)) {
-      // if (proportionalControl) {
         error[i] = targetSpeeds[i] - currentSpeeds[i];
         double output = error[i]*Kp*deltaLoop;
         currentSpeeds[i] += output;
@@ -553,14 +556,16 @@ void loop() {
       // also clip the current speed value just to be safe
       currentSpeeds[i] = clip(currentSpeeds[i], 0, 252);
     }
+    // END OF PID
+    
     // actually update wheel speeds
     wheel0.write((int)map(currentSpeeds[0], 252, 0, 0, 180));
-    wheel1.write((int)map(currentSpeeds[1], 0, 252, 0, 180));
+    wheel1.write((int)map(currentSpeeds[1], 252, 0, 0, 180));
     wheel2.write((int)map(currentSpeeds[2], 0, 252, 0, 180));
     wheel3.write((int)map(currentSpeeds[3], 252, 0, 0, 180));
-    wheel4.write((int)map(currentSpeeds[4], 0, 252, 0, 180));
+    wheel4.write((int)map(currentSpeeds[4], 252, 0, 0, 180));
     wheel5.write((int)map(currentSpeeds[5], 252, 0, 0, 180));
-    
-    // remember milli time of the last loop
+
+  }
   }
 }
