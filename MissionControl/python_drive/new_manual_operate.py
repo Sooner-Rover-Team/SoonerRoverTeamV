@@ -3,6 +3,15 @@ import socket
 import configparser
 from math import ceil, floor
 import os
+from Listener import MessageListener # read gps data
+# import matplotlib.pyplot as plt
+from collections import deque
+from datetime import datetime
+import select
+import threading
+import queue
+import pickle
+
 """ Change the current directory so config loads right """
 if os.path.dirname(__file__) != '':
     current_folder = os.path.dirname(__file__)
@@ -57,7 +66,10 @@ elif CONT_CONFIG == 'ps':
     R_Y_AXIS = 3
     R_2_AXIS = 5
 
-    #gimbal = 0
+    D_UP = 11
+    D_DOWN = 12
+    D_LEFT = 13
+    D_RIGHT = 14
     A_BUTTON = 0
     B_BUTTON = 1
     X_BUTTON = 2
@@ -87,6 +99,8 @@ timer = Clock()
 tp = util.TextPrint(40)
 # pygame.event.set_grab(True)
 
+light = 0
+
 """ Other constants and global variables """
 THRESHOLD_LOW = 0.08
 THRESHOLD_HIGH = 0.15
@@ -102,6 +116,14 @@ if USING_BRIDGE:
     ebox_socket.connect((BRIDGE_HOST,EBOX_PORT)) # What is the bridge? The base station/rover antenna connection?
 else:
     ebox_socket.connect((EBOX_HOST,EBOX_PORT)) # if not using base station, make the microcontroller the host? why not laptop?
+""" GPS SOCKET """
+gps = MessageListener(ip="192.168.1.3", port=5555) # jetson ip/port
+gps.start() # creates a new thread to listen to gps data in background
+old_data = {"latitude": -1.0, "longitude": -1.0, "bearing": -1.0} # place holder to just keep printing last received gps coords
+""" SCIENCE PLOTS """
+# ebox_socket.setblocking(False)
+# sciencePlots = ScienceSensorPlots(ebox_socket)
+# sciencePlots.start()
 
 """ ARM SHIT GOES HERE """
 claw_closed = False
@@ -117,36 +139,64 @@ elbow_length = 0
 wrist_rotation = 0
 wrist_angle = 0
 claw_dir = 0
-
+# old values for more efficient data sending
 old_base_rotation = 0    
 old_shoulder_length = 0
 old_elbow_length = 0
 old_wrist_rotation = 0
 old_wrist_angle = 0
 old_claw_dir = 0
-
 lastArmMsg = [old_shoulder_length, old_elbow_length, old_base_rotation, old_wrist_angle, old_wrist_rotation, old_claw_dir]
-
+# arm 
 alt_arm_config = 2
-""" DONT WORRY ABOUT IT """
 
 """ SCICENCE PACKAGE SHIT """
 # 0 is down, 1 is up, 2 is neither
 numSameMessages = 0
-act_speed = 127
-carousel_turn = 1
-microscope_position = 1
-claw_position = 90
-
 # old variables are used to more efficiently send UDP by not sending identical messages over and over again which is pointless.
-old_act_speed = 0
-old_carousel_turn = 0
-old_claw_position = 0
-old_microscope_position = 0
+big_actuator=0
+drill=0
+small_actuator = 0
+test_tubes = 0
+camera_servo = 90
+old_big_actuator = 0
+old_drill = 0
+old_small_actuator = 0
+old_test_tubes = 0
+old_camera_servo = 90
+panoramic_camera_angles = [30, 90, 150] # L/R bumper cycles through this list
+panoramic_index = 1
+bumper_pressed = False
 
-lastScienceMsg = [old_act_speed, old_carousel_turn, old_claw_position, old_microscope_position]
+lastScienceMsg = [old_big_actuator, old_drill, old_small_actuator, old_test_tubes, old_camera_servo]
 """ pretty simple actually """
 
+""" SCIENCE PLOT SHIT"""
+peak_threshold = 10  # Adjust as needed
+peaks = []
+# Data queue for communication between threads
+science_data_queue = queue.Queue()
+
+# Function to receive data and update the queue
+def receive_data():
+    while True:
+        data, _ = ebox_socket.recvfrom(1024)
+        science_data_queue.put(data.decode("utf-8"))
+
+# Thread for receiving science sensor data
+receive_thread = threading.Thread(target=receive_data)
+receive_thread.daemon = True
+receive_thread.start()
+
+# Queue for receiving data
+# data_queue = queue.Queue()
+# scienceData = []
+# plt.figure()
+
+# Start the thread to receive data
+# receive_thread = threading.Thread(target=receive_data, args=(sock, data_queue))
+# receive_thread.daemon = True
+# receive_thread.start()
 def draw_science_stuff(act_dir,act_speed,fan_speed,drill_speed, carousel_speed):
     w,h = screen.get_size()
     c_x = w/2
@@ -176,7 +226,7 @@ def isstopped(leftwheels,rightwheels):
 def wheel_message(leftwheels, rightwheels):
     msg =  bytearray([0x01, 0x01, # ID for WHEEL system and secondary ID for actual wheels
                     leftwheels[0], leftwheels[1], leftwheels[2], 
-                    rightwheels[0], rightwheels[1], rightwheels[2], 0x00])
+                    rightwheels[0], leftwheels[1], rightwheels[2], 0x00])
     msg[8] = sum(msg[2:8]) & 0xff # check sum, the & 0xff is to force the checksum to be a 8 bit num 0-256.
     return msg
 
@@ -194,15 +244,17 @@ def arm_messge(shoulder_length, elbow_length, base_rotation, wrist_angle, wrist_
     return msg
 
 """ make a science message """
-# SCIENCE msg: [startByte, deviceID, linearActuator, carousel, claw, microscope, checkSum]
-def sci_message(act_speed, carousel_turn, claw_position, microscope_position):
-    msg = bytearray(6)
+# OLD SCIENCE msg: [startByte, deviceID, linearActuator, carousel, claw, microscope, checkSum]
+ # MSG: [0x03, big_actuator, drill, small_actuator, test_tubes, camera_servo, checkSum]
+def sci_message(big_actuator, drill, small_actuator, test_tubes, camera_servo):
+    msg = bytearray(7)
     msg[0] = 0x03 # ID for SCIENCE
-    msg[1] = act_speed
-    msg[2] = carousel_turn
-    msg[3] = claw_position
-    msg[4] = microscope_position
-    msg[5] = sum(msg[1:5]) & 0xff
+    msg[1] = big_actuator
+    msg[2] = drill
+    msg[3] = small_actuator
+    msg[4] = test_tubes
+    msg[5] = camera_servo
+    msg[6] = sum(msg[1:6]) & 0xff
     return msg
 
 """ send a message to the LED strip"""
@@ -238,7 +290,7 @@ def val_map(value, fromLow, fromHigh, toLow, toHigh):
     valueScaled = float(value - fromLow) / float(leftSpan)
 
     # Convert the 0-1 range into a value in the right range.
-    return toLow + (valueScaled * rightSpan)
+    return int(toLow + (valueScaled * rightSpan))
 
 if __name__ == "__main__":
     running = True
@@ -252,7 +304,7 @@ if __name__ == "__main__":
         """ check all button events """
         for event in pygame.event.get():
             if event.type == pygame.JOYHATMOTION:
-                gim = joystick.get_hat(gimbal)
+                # gim = joystick.get_hat(gimbal)
                 msg = wheel_message(leftwheels, rightwheels)
                 ebox_socket.sendall(msg)
 
@@ -294,11 +346,30 @@ if __name__ == "__main__":
                     # A in drive mode will turn lights blue/red
                     if event.button == A_BUTTON: # A button changes lights red/blue
                         print('lights')
-                        if flash:
+                        if light == 0:
+                            msg = lights(0,0,0)
+                        elif light == 1:
                             msg = lights(255,0,0)
-                        else:
+                        elif light == 2:
+                            msg = lights(0,255,0)
+                        elif light == 3:
                             msg = lights(0,0,255)
-                        flash = not flash
+                        elif light == 4:
+                            msg = lights(255,255,0)
+                        elif light == 5:
+                            msg = lights(255,0,255)
+                        elif light == 6:
+                            msg = lights(0,255,255)
+                        elif light == 7:
+                            msg = lights(255,255,255)
+                        light += 1
+                        light = light % 8
+
+                        # if flash:
+                        #     msg = lights(255,0,0)
+                        # else:
+                        #     msg = lights(0,0,255)
+                        # flash = not flash
                         ebox_socket.sendall(msg)
                     if event.button == X_BUTTON: # X button switches modes
                         print('toggleWheels')
@@ -319,11 +390,12 @@ if __name__ == "__main__":
                             print('claw toggled')
                             claw_closed = not claw_closed
                     else:
-                        if event.button == A_BUTTON:
-                            if claw_position == 180:
-                                claw_position = 90
-                            else:
-                                claw_position = 180
+                        pass
+                        # if event.button == A_BUTTON:
+                        #     if claw_position == 180:
+                        #         claw_position = 90
+                        #     else:
+                        #         claw_position = 180
                             
         """ if the joystick is disconnected wait """
         if pygame.joystick.get_count() == 0:
@@ -339,7 +411,8 @@ if __name__ == "__main__":
         R_Y = joystick.get_axis(R_Y_AXIS)
         L_2 = joystick.get_axis(L_2_AXIS)
         R_2 = joystick.get_axis(R_2_AXIS)
-        gim = 0 #joystick.get_hat(gimbal) # size 2, gim[0]= left/right, gim[1]= up/down
+        if CONT_CONFIG == 'xbox':
+            gim = joystick.get_hat(gimbal) # size 2, gim[0]= left/right, gim[1]= up/down
 
         """ Generate msgs from controller input and send messages to designated subsystem """
         # send message to move the wheels
@@ -377,21 +450,21 @@ if __name__ == "__main__":
                 leftwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in leftwheels]
                 rightwheels = [int(val_map(wheel, 0, 252, 63, 189)) for wheel in rightwheels]
 
-            FRONT_MULT = 1.4
+            # FRONT_MULT = 1.4
 
 
-            leftwheels[0] -= 126
-            leftwheels[0] *= FRONT_MULT
-            leftwheels[0] = int(leftwheels[0]) + 126
+            # leftwheels[0] -= 126
+            # leftwheels[0] *= FRONT_MULT
+            # leftwheels[0] = int(leftwheels[0]) + 126
 
-            if leftwheels[0] > 252:
-                leftwheels[0] = 252
-            elif leftwheels[0] < 0:
-                leftwheels[0] = 0
+            # if leftwheels[0] > 252:
+            #     leftwheels[0] = 252
+            # elif leftwheels[0] < 0:
+            #     leftwheels[0] = 0
 
-            rightwheels[0] -= 126
-            rightwheels[0] *= FRONT_MULT
-            rightwheels[0] = int(rightwheels[0]) + 126
+            # rightwheels[0] -= 126
+            # rightwheels[0] *= FRONT_MULT
+            # rightwheels[0] = int(rightwheels[0]) + 126
 
             if rightwheels[0] > 252:
                 rightwheels[0] = 252
@@ -494,41 +567,87 @@ if __name__ == "__main__":
         # Left vertical joystick moves claw up/down
         # Vertical D-pad moves microscope up/down
         # A button toggles claw open/close (might change to right joystick)
+            """ SCIENCE PACKAGE SECTION ---- MSG: [0x03, big_actuator, drill, small_actuator, test_tubes, camera_servo, checkSum] """
         else:
+            """ BIG ACTUATOR -> Left Joystick y-axis """ 
             if (abs(L_Y) > THRESHOLD_HIGH): # left stick vertical axis controls linear actuator -1 to +1. Send 0 to 255. 0-127=backward speed. 127=stop, 127-255=forward speed
-                act_speed = 127 + int(L_Y*127)
+                big_actuator = 126 - int(L_Y*126)
             else:
-                act_speed = 127
-            
-            # FOR A REGULAR SERVO
-            # if(abs(gim[1]) > THRESHOLD_HIGH):
-            #     microscope_position -= 5*gim[1] #gim[1]=-1 when down d-pad is pressed. +1 when up
-            #     if(microscope_position>180):
-            #         microscope_position=180
-            #     elif(microscope_position<0):
-            #         microscope_position=0
-            # if(gim[1] < 0):
-            #     microscope_position = 2
-            # elif(gim[1] > 0):
-            #     microscope_position = 0
-            # else:
-            microscope_position = 1
+                big_actuator = 126
 
-            if (joystick.get_button(L_BUMPER)): 
-                carousel_turn = 2
+            """ DRILL -> Left/Right Trigger """ # Left bumper (reverse drill) and Right trigger (forward drill) control speeds
+            if(L_2 > -1+THRESHOLD_LOW):
+                drill = 126 + int((L_2+1)*63)
+            elif(R_2 > -1+THRESHOLD_LOW):
+                drill = 126 - int((R_2+1)*63)
+            else:
+                drill = 126
+
+            """ SMALL ACTUATOR ->  Y and A buttons """ # Triangle retracts, cirlce extends (to collect regolith below surface)
+            if (joystick.get_button(Y_BUTTON)):
+                small_actuator = 252 # small actuator moves so slow that we just send max speeds when controlling
+            elif (joystick.get_button(A_BUTTON)):
+                small_actuator = 0
+            else:
+                small_actuator = 126 # dont move if neither button is pressed
+
+            """ TEST TUBE ACTUATOR -> y axis d-pad """
+            if CONT_CONFIG == 'xbox':
+                if(gim[1] > THRESHOLD_HIGH):
+                    test_tubes = 252 # test tube actuator moves so slow that we just send max speeds when controlling
+                elif(gim[1] < -THRESHOLD_HIGH):
+                    test_tubes = 0
+                else:
+                    test_tubes = 126
+            else:
+                if(joystick.get_button(D_UP)):
+                    test_tubes = 252 # test tube actuator moves so slow that we just send max speeds when controlling
+                elif(joystick.get_button(D_DOWN)):
+                    test_tubes = 0
+                else:
+                    test_tubes = 126
+
+            """ CAMERA SERVO -> Left/Right Bumper for set positions,  x-axis d-pad for fine control """           
+            # FOR A REGULAR SERVO. This provides incrimental positioning of camera for visibility
+            if CONT_CONFIG == 'xbox':
+                if(abs(gim[0]) > THRESHOLD_HIGH):
+                    camera_servo += 3*gim[0] # pressing d-pad modifies the current servo position
+            else:
+                if(joystick.get_button(D_LEFT)):
+                    camera_servo -= 3 # pressing d-pad modifies the current servo position   
+                elif(joystick.get_button(D_RIGHT)):
+                    camera_servo += 3
+
+            if(camera_servo>180):
+                camera_servo=180
+            elif(camera_servo<0):
+                camera_servo=0
+
+            # Left bumper cycles back in panoramic angles. this provides set angles for camera panorama
+            elif (joystick.get_button(L_BUMPER)):
+                if not bumper_pressed:
+                    panoramic_index = (panoramic_index + 1)
+                    if panoramic_index > len(panoramic_camera_angles)-1:
+                        panoramic_index = len(panoramic_camera_angles)-1
+                    
+                    camera_servo = panoramic_camera_angles[panoramic_index]
+                    bumper_pressed = True
+            # Right bumper cycles forward in panormic angles
             elif (joystick.get_button(R_BUMPER)):
-                carousel_turn = 0
+                if not bumper_pressed:
+                    panoramic_index = (panoramic_index - 1)
+                    if panoramic_index < 0:
+                        panoramic_index = 0
+                    camera_servo = panoramic_camera_angles[panoramic_index]
+                bumper_pressed = True
             else:
-                carousel_turn = 1
+                bumper_pressed = False
 
-
-            #print(act_speed, carousel_turn, claw_position, microscope_position)
-            if(messageIsDifferent([act_speed, carousel_turn, claw_position, microscope_position], lastScienceMsg) or numSameMessages > 5):
+            # If a new button was pressed, then the message is new, meaning new commands need to be sent to rover. If msg hasn't changed, no need to send redundant data
+            if(messageIsDifferent([big_actuator, drill, small_actuator, test_tubes, camera_servo], lastScienceMsg) or numSameMessages > 5):
                 numSameMessages = 0
-                #print("a new button is pressed, so a new packet is sent")
-                #print(act_speed, carousel_turn, claw_position, microscope_position)
-                data = sci_message(act_speed, carousel_turn, claw_position, microscope_position)
-                print(act_speed, carousel_turn, claw_position, microscope_position)
+                data = sci_message(big_actuator, drill, small_actuator, test_tubes, camera_servo)
+                print(big_actuator, drill, small_actuator, test_tubes, camera_servo, data[6])
                 ebox_socket.sendall(data)
             else:
                 numSameMessages+=1
@@ -537,6 +656,29 @@ if __name__ == "__main__":
             # print(act_speed, carousel_turn, claw_position, microscope_position)
             # print(msg)
             # ebox_socket.sendall(msg)
+                
+        """ GENERATE SCIENCE PLOTS"""
+        # Receive data and address from the client
+        if ebox_socket.fileno() != -1:
+            ready_to_read, ready_to_write, exceptional_conditions = select.select([ebox_socket], [], [], 0)  # Number = timeout, 0 -> "nonblocking"
+            try:
+                scienceData = ebox_socket.recv(1024)
+            except socket.error as e:
+                print("Socket error:", e)
+            print(scienceData)
+
+            if scienceData is not None:
+                print(scienceData)
+                sensor_values = [byte for byte in scienceData]
+                sensor_values = [(9/5) * sensor_values[0] + 32, sensor_values[1], (sensor_values[2] * 256 + sensor_values[3]) - 335]
+                print(f"Received message: {sensor_values}")
+                # update_plots(len(buffers[0]) + 1, sensor_values)  # Increment the x-axis index
+                # Check for peaks
+                if max(sensor_values) > peak_threshold:
+                    peaks.append((datetime.now(), sensor_values))  # Store timestamp, sensor index, and value of peak
+        else:
+            sensor_values = [0,0,0]
+
 
         """ Generate pyGame gui based on inputs from controller """
         claw_x = coord_u
@@ -550,6 +692,18 @@ if __name__ == "__main__":
             image = armImage
         else:
             image = scienceImage
+        # data, addr = gps.recvfrom(1024) # 1024 is buffer size for max msg length we can get
+        # gps_info = [(data[0], data[1]), data[2]]
+            # Location information
+        data = gps.getData()
+        print(data)
+        if data is None: # returns None if Listener didnt get UDP msgs from jetson
+            data = old_data #{"latitude": -1.0, "longitude": -1.0, "bearing": -1.0}
+        else:
+            data['latitude'] = float(str(round(data['latitude'], 6)))
+            data['longitude'] = float(str(round(data['longitude'], 6)))
+            data['bearing'] = float(str(round(data['bearing'], 2)))
+        old_data = data
 
         screen.blit(image, (0,0))
         tp.print(screen,"Mode: ",BLACK)
@@ -562,8 +716,8 @@ if __name__ == "__main__":
         else:
             tp.print(screen,"Science",RED)
             #act_speed_draw = act_speed-126 if act_dir == 0 else -(act_speed-126)
-            #util.draw_science_stuff(screen, (act_speed_draw, fan_speed, drill_speed, carousel_speed), tp)
-            util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp)
+            util.draw_science_stuff(screen, (big_actuator, small_actuator, test_tubes, drill, camera_servo), sensor_values, [(data["latitude"], data["longitude"]), data["bearing"]], tp)
+            # util.draw_science_stuff(screen, (act_speed, microscope_position, claw_position, carousel_turn), tp)
 
         tp.println(screen, '',BLACK)
 
@@ -571,5 +725,9 @@ if __name__ == "__main__":
         timer.tick(40) #FPS 40 - Test once subsystems are built to see how fast we can send messages without big errors or stalls in the arduino function
         # timer.tick() is # of frames in one second
 
+# swift.stop_GPS()
+gps.stop()
 pygame.joystick.quit()
 pygame.quit()
+# plt.ioff()  # Turn off interactive mode
+# plt.show()

@@ -10,9 +10,9 @@ Servo servo1, servo2, servo3;
 void setup() {
   Serial.begin(9600);
   Serial.println("starting");
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  // servo1.attach(13, 1000, 2000); // min/max in microseconds, 900-2100
+  // pinMode(5, OUTPUT);
+  // pinMode(6, OUTPUT);
+  servo1.attach(6, 1000, 2000); // min/max in microseconds, 900-2100
   // servo2.attach(21, 1000, 2000);
   // servo3.attach(3, 1000, 2000);
   // servo1.write(90);
@@ -44,18 +44,18 @@ void loop()
 //  int angle2 = userInput2.toInt(); // convert the String into an int (integer) variable.
 //  Serial.println(angle2); // print the number to the Serial Monitor. (used for debugging)
 
- if(angle1 == 0) { // out
-   digitalWrite(5, HIGH);
-   digitalWrite(6, LOW);
- }
- else if(angle1 == 2) { // in
-  digitalWrite(5, LOW);
-  digitalWrite(6, HIGH);
- }
- else {
-   digitalWrite(5, HIGH);
-   digitalWrite(6, HIGH);
- }
+//  if(angle1 == 0) { // out
+//    digitalWrite(5, HIGH);
+//    digitalWrite(6, LOW);
+//  }
+//  else if(angle1 == 2) { // in
+//   digitalWrite(5, LOW);
+//   digitalWrite(6, HIGH);
+//  }
+//  else {
+//    digitalWrite(5, HIGH);
+//    digitalWrite(6, HIGH);
+//  }
 
   // send the angle position to the servo
   // for(int i=0; i<180; i+=30) {
@@ -70,7 +70,7 @@ void loop()
   //   servo1.write(angle1);
   //   oldAngle = angle1;
   // }
-  //servo1.write(angle1);
+  servo1.write(angle1);
   //servo2.write(angle2);
   delay(500);
 }

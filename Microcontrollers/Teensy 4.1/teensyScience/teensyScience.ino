@@ -1,99 +1,158 @@
 #include <ACAN_T4.h>
 #include <Servo.h>
-
+#include <Adafruit_AHT10.h> // read temp/humidity sensor
 
 /*
- * USING TALONS TO CONTROL ALL MOTORS (ACTYUATOR/CAROUSEL) -> TREAT EACH MOTOR AS A CONTINUOUS SERVO
- *  The carousel has an external limit switches to maintain alignment between test tubes and fan cone.
+ * SCIENCE TEENSY:
+ * - receives CAN msgs containing motor speeds
+ * - writes out motor signals to motor controllers
+ * - sends out CAN msgs containing sensor data (TODO)
+ *
+ * TALON for dril
+ * H-Bridge for Big, small and test tube actuators
+ * no motor controller for servo (its built in)
  */
 
 // Set equal to 1 for serial debugging
-#define DEBUG 0
-
+#define DEBUG 1
+// Message ID for science pckg
 #define SCIENCE_ID 0x03
 
-// which pin is up depends on wiring. Can be reversed
-#define ACTUATOR_UP_PIN 16
-#define ACTUATOR_DOWN_PIN 17
-//#define ACTUATOR_LIMIT_PIN
+// ********** MOTOR PINS ***********
+// Digital Outputs (H-bridge has 2 inputs)
+#define BIG_ACT_UP_PIN 
+#define BIG_ACT_DOWN_PIN
 
-#define CAROUSEL_PIN 13
-#define CAROUSEL_LIMIT_PIN 3
+#define SMALL_ACT_UP_PIN
+#define SMALL_ACT_DOWN_PIN
 
-#define FAN_PIN 21 // what 9 + 10
-#define MICROSCOPE_UP_PIN 7
-#define MICROSCOPE_DOWN_PIN 8
-#define MICROSCOPE_ENCODER_PIN 10
+#define TEST_TUBE_UP_PIN
+#define TEST_TUBE_DOWN_PIN
+// PWM Outputs (TALON and Servo)
+#define DRILL_PIN
+#define SERVO_CAM_PIN
+
+#define AHT10_A_PIN 24
+#define AHT10_D_PIN 25
+#define METHANE_PIN 14
+
+// Object to read the sensor
+Adafruit_AHT10 AHT10;
 
 // servo objects for talon motor controllers
-Servo carousel, fan;
-
+Servo drill;
 // The current CAN message to be sent out
-CANMessage message;
+CANMessage message_received;
+CANMessage message_sent;
 
 // raw bytes to store from ethernet data
 // they are converted to output ranges in updateServos()
 uint8_t myHash = 0;
 uint8_t serialHash = 0;
-int linearActuatorSpeed = 127;
-int carouselSpeed = 1;
-int fanSpeed = 90;
-int microscopePosition = 1;
+// used to store motor msg data
+int bigActSpeed = 126;
+int smallActSpeed = 126;
+int testTubeSpeed = 126;
+int drillSpeed = 90;
+int servoCamPosition = 90;
 
-bool carouselMoving = false;
-bool linearActuatorMoving = false;
-
+// unsigned long msgTime
+// stop motors if last msg recieved is more than 1 second
 unsigned long stopTimeout = 0, turnTimeout = 0;
 
 // callback that prints received packets to the serial port
 void updateMotors(CANMessage message) {
+  Serial.println("CAN MSG RECIEVED");
 
-  // SCIENCE msg: [deviceID, linearActuator, carousel, fan, microscope]
-  linearActuatorSpeed = message.data[0];
-  carouselSpeed = message.data[1];
-  fanSpeed = message.data[2];
-  microscopePosition = message.data[3];
+  // SCIENCE CAN msg (with msg.ID==0x03): [bigActuator, drill, smallActuator, testTubeActuator, servoCam]
+  bigActSpeed = message.data[0];
+  drillSpeed = message.data[1];
+  smallActSpeed = message.data[2];
+  testTubeSpeed = message.data[3];
+  servoCamPosition = message.data[4];
 
-  // update linear actuator
-  if(linearActuatorSpeed > 127) {
-    digitalWrite(ACTUATOR_UP_PIN, HIGH);
-  }
-  else if (linearActuatorSpeed < 127) {
-    digitalWrite(ACTUATOR_DOWN_PIN, HIGH);
-  }
-  else {
-    digitalWrite(ACTUATOR_UP_PIN, LOW);
-    digitalWrite(ACTUATOR_DOWN_PIN, LOW);
-  }
+  // // UDPATE BIG ACTUATOR
+  // if (bigActSpeed > 126) {
+  // digitalWrite(BIG_ACT_UP_PIN, HIGH);
+  // digitalWrite(BIG_ACT_DOWN_PIN, LOW);
+  // }
+  // else if (bigActSpeed < 126) {
+  // digitalWrite(BIG_ACT_UP_PIN, LOW);
+  // digitalWrite(BIG_ACT_DOWN_PIN, HIGH);
+  // }
+  // else { // msg == 126 is neutral speed
+  // digitalWrite(BIG_ACT_UP_PIN, LOW);
+  // digitalWrite(BIG_ACT_DOWN_PIN, LOW);
+  // }
+  // // UDPATE SMALL ACTUATOR
+  // if (smallActSpeed > 126) {
+  // digitalWrite(SMALL_ACT_UP_PIN, HIGH);
+  // digitalWrite(SMALL_ACT_DOWN_PIN, LOW);
+  // }
+  // else if (smallActSpeed < 126) {
+  // digitalWrite(SMALL_ACT_UP_PIN, LOW);
+  // digitalWrite(SMALL_ACT_DOWN_PIN, HIGH);
+  // }
+  // else { // msg == 126 is neutral speed
+  // digitalWrite(SMALL_ACT_UP_PIN, LOW);
+  // digitalWrite(SMALL_ACT_DOWN_PIN, LOW);
+  // }
+  // // UDPATE TEST TUBE ACTUATOR
+  // if (testTubeSpeed > 126) {
+  // digitalWrite(TEST_TUBE_UP_PIN, HIGH);
+  // digitalWrite(TEST_TUBE_DOWN_PIN, LOW);
+  // }
+  // else if (testTubeSpeed < 126) {
+  // digitalWrite(TEST_TUBE_UP_PIN, LOW);
+  // digitalWrite(TEST_TUBE_DOWN_PIN, HIGH);
+  // }
+  // else { // msg == 126 is neutral speed
+  // digitalWrite(TEST_TUBE_UP_PIN, LOW);
+  // digitalWrite(TEST_TUBE_DOWN_PIN, LOW);
+  // }
+  // // UDPATE DRILL
+  // drill.write(drillSpeed);
+  // // UDPATE SERVO CAMERA POSITION
+  // servoCam.write(servoCamPosition);
+}
 
-  //update carousel
-  if(carouselSpeed==0) { //if carousel already moving, no need to call write function again
-    carousel.write(130);
-    carouselMoving = true;
-    delay(10);
-  }
-  else if(carouselSpeed==2) {
-    carousel.write(50);
-    carouselMoving = true;
-    delay(10);
-  }
-  else if (carouselSpeed == 1) {}
+// Reads Sensor data and write out values to CAN
+//  CAN MSG: [temperature, humidity, methane] msg.ID = 0x04?
+void sendSensorData() {
+  sensors_event_t humidity, temp;
+  AHT10.getEvent(&humidity, &temp); // populate temp and humidity objects with fresh data
+  byte data[4] = {0};
+  // read temp/ humidity
+  data[0] = temp.temperature;
+  data[1] = humidity.relative_humidity;
+  // read methane
+  int sensor = analogRead(METHANE_PIN);
+  Serial.println(sensor);
+  data[2] = sensor / 256;
+  data[3] = sensor % 256;
+
+  #if DEBUG
+    for(int i=0; i<4; i++) {
+      Serial.print(uint64_t(data[i]));
+      Serial.print(" ");
+    }
+    Serial.println();
+  #endif
   
-  //update claw
-  fan.write(fanSpeed);
+  // Ensure correct endianness if needed
+  
+  // Pack data into CAN message
+  message_sent.id = 0x04; // low priority msg
+  message_sent.len = 4; // 3 integers sent
+  memcpy(message_sent.data, data, message_sent.len); // Copy sensor data into CAN msg
 
-  //update microscope
-  if(microscopePosition == 0) {
-    digitalWrite(MICROSCOPE_UP_PIN, HIGH);
-  }
-  else if(microscopePosition == 2) {
-    digitalWrite(MICROSCOPE_DOWN_PIN, HIGH);
-  }
-  else {
-    digitalWrite(MICROSCOPE_UP_PIN, LOW);
-    digitalWrite(MICROSCOPE_DOWN_PIN, LOW);
+  // Try to send CAN message
+  bool ok = ACAN_T4::can3.tryToSend(message_sent);
+  if (ok && DEBUG) {
+    // Serial.println("Sensor Data sent");
   }
 }
+
 
 void setup()
 {
@@ -127,65 +186,92 @@ void setup()
     }
   }
 
-    // setup motors
-  pinMode(ACTUATOR_UP_PIN, OUTPUT);
-  pinMode(ACTUATOR_DOWN_PIN, OUTPUT);
-  pinMode(MICROSCOPE_UP_PIN, OUTPUT);
-  pinMode(MICROSCOPE_DOWN_PIN, OUTPUT);
-  digitalWrite(ACTUATOR_UP_PIN, LOW);
-  digitalWrite(ACTUATOR_DOWN_PIN, LOW);
-  digitalWrite(MICROSCOPE_UP_PIN, LOW);
-  digitalWrite(MICROSCOPE_DOWN_PIN, LOW);
+  // setup temp / humidity sensor
+  if (AHT10.begin()) {
+    #if DEBUG
+      Serial.println("Init AHT10 Success!");
+    #endif
+  } else {
+    #if DEBUG
+      Serial.println("INIT AHT10 Failed!");
+    #endif
+  }
+  pinMode(METHANE_PIN, INPUT); // Set the D8 pin as a digital input pin
 
-  carousel.attach(CAROUSEL_PIN, 900, 2100);
-  fan.attach(FAN_PIN, 900, 2100);
+  // setup motor pins (3 actuators using digital signals)
+  // pinMode(BIG_ACT_UP_PIN, OUTPUT);
+  // pinMode(BIG_ACT_DOWN_PIN, OUTPUT);
+  // pinMode(SMALL_ACT_UP_PIN, OUTPUT);
+  // pinMode(SMALL_ACT_DOWN_PIN, OUTPUT);
+  // pinMode(TEST_TUBE_UP_PIN, OUTPUT);
+  // pindMode(TEST_TUBE_DOWN_PIN, OUTPUT);
+
+  // // initialize pins to low (0v)
+  // digitalWrite(BIG_ACT_UP_PIN, LOW);
+  // digitalWrite(BIG_ACT_DOWN_PIN, LOW);
+  // digitalWrite(SMALL_ACT_UP_PIN, LOW);
+  // digitalWrite(SMALL_ACT_DOWN_PIN, LOW);
+  // digitalWrite(TEST_TUBE_UP_PIN, LOW);
+  // digitalWrite(TEST_TUBE_DOWN_PIN, LOW);
+
+  // drill.attach(DRILL_PIN, 900, 2100);
+  // servoCam.attach(servoCam, 900, 2100);
   // all motors should start in neutral position (resting for motors, 90 degrees for servos)
-  carousel.write(90);
-  fan.write(90);
+  // drill.write(90);
+  // servoCam.write(90);
 
-  pinMode(CAROUSEL_LIMIT_PIN, INPUT_PULLUP); // digital signal
-  pinMode(MICROSCOPE_ENCODER_PIN, INPUT); // analog signal
+  // pinMode(CAROUSEL_LIMIT_PIN, INPUT_PULLUP); // digital signal
+  // pinMode(MICROSCOPE_ENCODER_PIN, INPUT); // analog signal
 
 }
 
 void loop()
 {
   // receive CAN message if one is available
-  if (ACAN_T4::can3.receive (message)) {
+  if (ACAN_T4::can3.receive (message_received)) {
     #if DEBUG // print the message for debugging
     Serial.println("Message received");
-      if(message.id == 0x03) {
+      if(message_received.id == 0x03) {
         Serial.print("ID=");
-        Serial.print(message.id);
+        Serial.print(message_received.id);
         Serial.print(" msg = ");
-        for(int i=0; i<message.len; ++i) {
-          Serial.print(message.data[i]);
+        for(int i=0; i<message_received.len; ++i) {
+          Serial.print(message_received.data[i]);
           Serial.print(", ");
         }
         Serial.println();
       }
     #endif
 
-    if(message.id == SCIENCE_ID) { // science id = 0x03
-      if(message.len == 4) { // CAN performs it's own checksum so no need to check that
-        updateMotors(message);
+    if(message_received.id == SCIENCE_ID) { // science id = 0x03
+      if(message_received.len == 5) { // CAN performs it's own checksum so no need to check that
+        updateMotors(message_received);
       }
     }
-  }
-
+  } 
+  // stopTimeout = millis();
+  sendSensorData();
+  
   // If switch is triggered while carousel is moving, stop carousel. This should allign test tube properly
- if(!digitalRead(CAROUSEL_LIMIT_PIN) && carouselMoving && (carouselSpeed == 1)) {
-   //Serial.println("limited");
-   carousel.write(90);
-   carouselMoving = false;
- }
+//  if(!digitalRead(CAROUSEL_LIMIT_PIN) && carouselMoving && (carouselSpeed == 1)) {
+//    //Serial.println("limited");
+//    carousel.write(90);
+//    carouselMoving = false;
+//  }
 
   unsigned long curr_time = millis();
   // stop all motors after 1 second of no messages
   if (curr_time - stopTimeout >= 1000) {
     stopTimeout = millis();
-    carousel.write(90);
-    fan.write(90);
+    // drill.write(90);
+    // servoCam.write(90);
+
+    // digitalWrite(BIG_ACT_UP_PIN, LOW);
+    // digitalWrite(BIG_ACT_DOWN_PIN, LOW);
+    // digitalWrite(SMALL_ACT_UP_PIN, LOW);
+    // digitalWrite(SMALL_ACT_DOWN_PIN, LOW);
+    // digitalWrite(TEST_TUBE_UP_PIN, LOW);
+    // digitalWrite(TEST_TUBE_DOWN_PIN, LOW);
 
     #if DEBUG
       Serial.println("Stopped motors");

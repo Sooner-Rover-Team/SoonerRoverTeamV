@@ -54,9 +54,9 @@ void setup () {
       digitalWrite (LED_BUILTIN, !digitalRead (LED_BUILTIN)) ;
     }
   #endif
-  ACAN_T4_Settings settings (100 * 1000) ; // 100 kbit/s - must agree on both ends of CAN
+  ACAN_T4_Settings settings (100 * 1000); // 100 kbit/s - must agree on both ends of CAN
 
-  const uint32_t errorCode = ACAN_T4::can3.begin (settings) ;
+  const uint32_t errorCode = ACAN_T4::can3.begin (settings);
 
   if (0 == errorCode) {
     #if DEBUG
@@ -124,10 +124,14 @@ void loop () {
     }
     #endif
 
-    if(message.id == 0x02) { // upperarm ID = 0x02
-      if(message.len == 3) { // one byte for each motor
+    // upperarm ID = 0x02, one byte for each motor
+    if(message.id == 0x02 && message.len == 3) { 
         updateMotors(message);
-      }
+    }
+    else {
+      #if DEBUG
+        Serial.print(" incorrect ID or msg len to upper arm");
+      #endif
     }
   }
   /***** PID WILL NEED TO BE TESTED AFTER SAR *****/

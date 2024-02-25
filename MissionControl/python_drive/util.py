@@ -2,6 +2,7 @@ from math import hypot, sqrt, cos, sin, atan, atan2, acos, pi, dist
 from turtle import distance
 import pygame
 from pygame import gfxdraw
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
@@ -385,50 +386,54 @@ This function draws all science UI using the inputs from the controller
 For loop creates Actuator, Microscope and Claw rectangles and uses height variable to determine length of color bar.
  Editing what the colors bar do in the future will require messing with the height variable and pygame.draw.line functions.
 """
-def draw_science_stuff(screen, speeds, tp):
+# speeds = (big_actuator, small_actuator, test_tubes, drill, camera_servo)
+def draw_science_stuff(screen, speeds, scienceData, gps_info, tp):
     w,h = (800,600)#screen.get_size()
-    labels = ['Actuator', 'Microscope Zoom', 'Fan']
-    directions = ['Up', 'Down', 'Out', 'In', 'On', 'Off']
+    labels = ['Staff', 'Chamber', 'Drill', 'Test Tubes']
+    directions = ['Up', 'Down', 'Open', 'Close', 'Forward', 'Reverse', 'Left', 'Right']
     c_x = w/2
     c_y =h/2
-    x_spacing = w/3.5
-    left_x = c_x - x_spacing
+    x_spacing = w/4.5
+    left_x = c_x - x_spacing*1.65
     bar_height = h/4
-    bar_width = 60
+    bar_width = 50
+
+    tp.printat(screen, f"GPS: {str(gps_info[0])}", BLACK, (0, 50))
+    tp.printat(screen, f"Bearing: {str(gps_info[1])}", BLACK, (0, 73))
+
+    tp.printat(screen, f"Temp={scienceData[0]} F, Humidity={scienceData[1]} %", BLACK, (810, 240))
+    tp.printat(screen, f"Methane={scienceData[2]} ppm", BLACK, (850, 270))
+
     for i in range(len(speeds)-1):
         s = speeds[i]
         x_coord = left_x + i * x_spacing
         y_coord = c_y
         height = (s / 127) - 1
-        tp.printat(screen, labels[i], BLACK, (x_coord, y_coord - bar_height*1.2))
-        tp.printat(screen, directions[i*2], BLACK, (x_coord-70, y_coord*.66))
-        tp.printat(screen, directions[i*2+1], BLACK, (x_coord-70, y_coord*1.2))
+        tp.printat(screen, labels[i], BLACK, (x_coord-len(labels[i])*7, y_coord - bar_height*1.2))
+        tp.printat(screen, directions[i*2], BLACK, (x_coord-len(directions[i*2])*13-50, y_coord*.66))
+        tp.printat(screen, directions[i*2+1], BLACK, (x_coord-len(directions[i*2+1])*13-50, y_coord*1.2))
 
         bound = pygame.rect.Rect(x_coord - bar_width/2, y_coord - bar_height,bar_width,bar_height*2)
-        if i == 0: # actuator
-            if s > 128:
-                color = (255*abs(height), 0,0,0)
-            else:
-                color = (0, 255*abs(height),0,0)
-            pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord+height*bar_height),bar_width)
+
+        if s > 128:
+            color = (0, 255*abs(height),0,0)
         else:
-            if i == 1: # microscope
-                height = s/180
-                color = (255*abs(height/2), 0,255*abs(height/2),0)
-                pygame.draw.line(screen, color, (x_coord, y_coord-bar_height), (x_coord, y_coord-bar_height+abs(height)*2*bar_height),bar_width)
-            else: # claw
-                height = (s/90) - 1
-                color = (0,0,255*abs(height),0)
-                pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord+height*bar_height),bar_width)
+            color = (255*abs(height), 0,0,0)
+        pygame.draw.line(screen, color, (x_coord, y_coord), (x_coord, y_coord-height*bar_height),bar_width)
+
 
         pygame.draw.rect(screen, BLACK, bound, 4, 1)
-    s = speeds[3] #carousel
+
+    s = speeds[len(speeds)-1] #camera Servo
     width = s - 1
-    bound = pygame.rect.Rect(left_x, c_y+bar_height*1.2,x_spacing*2,bar_width)
+    bound = pygame.rect.Rect(c_x-left_x-x_spacing/2, c_y+bar_height*1.2,x_spacing*2,bar_width)
     if width != 0:
-        pygame.draw.line(screen, GREEN, (c_x,c_y+bar_height*1.2+bar_width/2), (c_x+x_spacing*width,c_y+bar_height*1.2+bar_width/2), bar_width)
+        pygame.draw.line(screen, RED, (c_x-left_x-x_spacing/2+width*2-5,c_y+bar_height*1.2+bar_width/2), (c_x-left_x-x_spacing/2+width*2+5,c_y+bar_height*1.2+bar_width/2), bar_width-1)
+        pygame.draw.line(screen, BLACK, (c_x-left_x-x_spacing/2+width*2-5,c_y+bar_height*1.2+bar_width/2), (c_x-left_x-x_spacing/2+width*2-4,c_y+bar_height*1.2+bar_width/2), bar_width-1)
+        pygame.draw.line(screen, BLACK, (c_x-left_x-x_spacing/2+width*2+5,c_y+bar_height*1.2+bar_width/2), (c_x-left_x-x_spacing/2+width*2+4,c_y+bar_height*1.2+bar_width/2), bar_width-1)
+
     pygame.draw.rect(screen, BLACK, bound, 4, 1)
-    tp.printat(screen, 'Carousel', BLACK, (c_x, c_y + bar_height*1.4 + bar_width))
+    tp.printat(screen, 'Panoramic Camera', BLACK, (c_x-150, c_y + bar_height+80))
 
 
 
@@ -451,8 +456,8 @@ class TextPrint(object):
     
     def printat(self, screen, text_string, color, coord):
         textBitmap = self.font.render(text_string, True, color)
-        x_coord = coord[0] - textBitmap.get_width()/2
-        y_coord = coord[1] - textBitmap.get_height()/2
+        x_coord = coord[0] #- textBitmap.get_width()/2
+        y_coord = coord[1] #- textBitmap.get_height()/2
         screen.blit(textBitmap, (x_coord, y_coord))
 
 

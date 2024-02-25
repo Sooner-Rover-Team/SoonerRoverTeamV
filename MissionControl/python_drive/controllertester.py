@@ -114,6 +114,7 @@ while not done:
 
         # Usually axis run in pairs, up/down for one, and left/right for
         # the other.
+            
         axes = joystick.get_numaxes()
         textPrint.tprint(screen, "Number of axes: {}".format(axes))
         textPrint.indent()
