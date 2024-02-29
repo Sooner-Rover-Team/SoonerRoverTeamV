@@ -185,8 +185,10 @@ def updateArm():
     if ebox_socket in ready_to_read:
         try:
             encodermsg = ebox_socket.recv(1024)
-            encoderprint = encodermsg[1] * 255 + encodermsg[0]
-            print(encoderprint)
+            # print(byte for byte in encodermsg)
+            print(encodermsg)
+            # encoderprint = encodermsg[1] * 255 + encodermsg[0]
+            # print(encoderprint)
 
         except socket.timeout:
             print("Socket timeout")
@@ -307,6 +309,11 @@ while running:
         if event.type == pygame.JOYDEVICEADDED & pygame.joystick.get_count() == 0:
             print('Joystick Connected')
             joystick = pygame.joystick.Joystick(0)
+        if event.type == pygame.JOYHATMOTION:
+                gim = joystick.get_hat(0)
+                print(gim)
+                msg = [0x03, gim[0]]
+                ebox_socket.sendall(msg)
         if event.type == pygame.JOYBUTTONDOWN:
             if event.button == SELECT:
                 if arm_installed:

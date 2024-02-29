@@ -66,14 +66,16 @@ CANMessage recMessage;
 #define ARM 0x02
 #define SCIENCE 0x03
 #define LED 0x02
-#define LOWER_ARM 0x01 // CAN IDs
-#define UPPER_ARM 0x02
-#define ENCODER 0x04
+
+#define LOWER_ARM 0b100 // CAN IDs
+#define UPPER_ARM 0b010
+#define ENCODER 0b001
 #define CAN_LED 2
 #define UDP_LED 1
 #define greenPin 10 // LED pins on Teensy
 #define redPin 11
 #define bluePin 12
+#define GIMBAL 0x05
 
 int checkSum = 0; // used to check for errors in recieved message.
 
@@ -409,7 +411,7 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
     checkSum = checkSum & 0xff;
     if(checkSum == uint8_t(msg[5])) {
       message.id = SCIENCE; // ID for lower arm
-      message.len = 4;
+      message.len = 1;
       memcpy(message.data, &msg[1], 4); // actuator, carousel, fan, microscope
       bool ok = ACAN_T4::can3.tryToSend (message) ;
       if(ok && DEBUG) {
@@ -445,7 +447,7 @@ void sendScienceCAN(unsigned char msg[], int msgSize) {
 
 void loop() {
   if(ACAN_T4::can3.receive(recMessage)) {
-      if(recMessage.id == 0x04) {
+      if(recMessage.id == ENCODER) {
         if(recMessage.len == 2) {
           sendEncoder(recMessage);
         }
@@ -501,6 +503,9 @@ void loop() {
     }
     else if(packetBuffer[0] == SCIENCE) {
       sendScienceCAN(packetBuffer, packetSize);
+    }
+    else if(packetBuffer[0] == GIMBAL) {
+      sendGimbalCAN(packetBuffer, packetSize);
     }
     else {
       #if DEBUG
